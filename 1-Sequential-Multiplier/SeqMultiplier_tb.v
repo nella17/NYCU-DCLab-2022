@@ -3,7 +3,7 @@
 // Company: 
 // Engineer: 
 // 
-// Create Date: 09/17/2022 02:23:50 PM
+// Create Date: 2019/09/20 11:29:36
 // Design Name: 
 // Module Name: SeqMultiplier_tb
 // Project Name: 
@@ -21,29 +21,32 @@
 
 
 module SeqMultiplier_tb();
-    reg clk = 1;
-    reg enable;
-    reg [7:0] A, B;
-    wire [15:0] C;
-    
-    SeqMultiplier uut(.clk(clk), .enable(enable), .A(A), .B(B), .C(C));
-    
-    always #5 clk = !clk;
-    
-    initial begin
-        A = 0; B = 0; enable = 0;
-        #100;
-        
-        enable = 0;
-        A = 8'b01010101; B = 8'b00011000;
-        #20;
-        enable = 1;
-        #80;
 
-        enable = 0;
-        A = 8'b10011001; B = 8'b1000001;
-        #20;
-        enable = 1;
-        #80;
-    end
+// CLK 100MHz
+reg clk = 1;
+always #5 clk = ~clk;
+
+// I/O & Signal
+reg enable = 1'b0;
+reg  [ 8-1: 0] A = 8'b0;
+reg  [ 8-1: 0] B = 8'b0;
+wire [16-1: 0] C;
+
+SeqMultiplier testUnit(
+    .clk(clk),
+    .enable(enable),
+    .A(A),
+    .B(B),
+    .C(C)
+);
+
+initial begin
+    #20
+    A = 8'd239;
+    B = 8'd163;
+    #40
+    enable = 1'b1;
+    
+end
+
 endmodule
