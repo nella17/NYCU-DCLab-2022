@@ -21,7 +21,7 @@ module mmult(
         if (!enable || !reset_n) begin
             counter <= 0;
             valid <= 0;
-            C_mat <= 157'b0;
+            C_mat <= { 9{ 17'b0 } };
         end
         else if (mult) begin
             for(x = 0; x < 3; x = x+1) begin
