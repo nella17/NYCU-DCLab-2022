@@ -8,6 +8,9 @@ def gen():
 sa = gen()
 sb = gen()
 
+sa = '4F_7E_57_0F_14_7B_21_4C_54'
+sb = '17_28_3A_40_2F_33_6C_22_77'
+
 def s2m(s):
     a = [int(x,16) for x in s.split('_')]
     m = np.matrix(np.reshape(a, (3,3)))

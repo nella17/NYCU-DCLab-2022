@@ -17,11 +17,11 @@ module mmult(
  
     assign mult = |(counter ^ 3);
     
-    always @(posedge clk, negedge reset_n) begin
-        if (!enable || !reset_n) begin
+    always @(posedge clk, negedge reset_n, mult) begin
+        if (enable !== 1 || reset_n === 0) begin
             counter <= 0;
             valid <= 0;
-            C_mat <= { 9{ 17'b0 } };
+            C_mat <= 0;
         end
         else if (mult) begin
             for(x = 0; x < 3; x = x+1) begin
