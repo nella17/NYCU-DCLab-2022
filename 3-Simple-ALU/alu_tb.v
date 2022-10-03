@@ -48,16 +48,59 @@ always #(`strobe/2) clk = ~clk;
       $display("\t\t\t\t\t\t CODE     DATA IN    ACCUM IN      ALU OUT   ZERO BIT");
       $display("\t\t\t\t\t      ------   --------   --------      --------  --------");
       $timeformat(-9, 1, " ns", 9); //Display time in nanoseconds 
+
+      accum = 8'h00;
+      data = 8'h00;
+      # (`strobe*3/2) check_outputs;
+
       reset = 0;
       # `strobe;
       reset = 1;
       # `strobe;
       reset = 0;
-      @(negedge clk)
-        #(`strobe/4) opcode = 3'b011;
-      accum = 8'h37;
+
+      accum = 8'hDF;
       data = 8'hD6;
+
+      @(negedge clk)
+        #(`strobe/4) opcode = `PASSA;
       # (`strobe*3/2) check_outputs;
+      # `testnumber;
+
+      @(negedge clk)
+        #(`strobe/4) opcode = `ADD;
+      # (`strobe*3/2) check_outputs;
+      # `testnumber;
+
+      @(negedge clk)
+        #(`strobe/4) opcode = `SUB;
+      # (`strobe*3/2) check_outputs;
+      # `testnumber;
+
+      @(negedge clk)
+        #(`strobe/4) opcode = `AND;
+      # (`strobe*3/2) check_outputs;
+      # `testnumber;
+
+      @(negedge clk)
+        #(`strobe/4) opcode = `XOR;
+      # (`strobe*3/2) check_outputs;
+      # `testnumber;
+
+      @(negedge clk)
+        #(`strobe/4) opcode = `ABS;
+      # (`strobe*3/2) check_outputs;
+      # `testnumber;
+
+      @(negedge clk)
+        #(`strobe/4) opcode = `MUL;
+      # (`strobe*3/2) check_outputs;
+      # `testnumber;
+
+      @(negedge clk)
+        #(`strobe/4) opcode = `PASSD;
+      # (`strobe*3/2) check_outputs;
+      # `testnumber;
     end
 
 /**********************************************************************
