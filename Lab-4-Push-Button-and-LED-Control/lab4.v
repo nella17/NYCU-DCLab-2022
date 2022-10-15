@@ -1,16 +1,16 @@
 `timescale 1ns / 1ps
 module lab4(
-  input  clk,            // System clock at 100 MHz
-  input  reset_n,        // System reset signal, in negative logic
-  input  [3:0] usr_btn_raw,  // Four user pushbuttons
-  output reg [3:0] usr_led   // Four yellow LEDs
+    input  clk,            // System clock at 100 MHz
+    input  reset_n,        // System reset signal, in negative logic
+    input  [3:0] usr_btn,  // Four user pushbuttons
+    output reg [3:0] usr_led   // Four yellow LEDs
 );
 
-    wire [3:0] usr_btn;
-    debounce db_btn_0(.clk(clk), .in(usr_btn_raw[0]), .out(usr_btn[0]));
-    debounce db_btn_1(.clk(clk), .in(usr_btn_raw[1]), .out(usr_btn[1]));
-    debounce db_btn_2(.clk(clk), .in(usr_btn_raw[2]), .out(usr_btn[2]));
-    debounce db_btn_3(.clk(clk), .in(usr_btn_raw[3]), .out(usr_btn[3]));
+    wire [3:0] btn;
+    debounce db_btn_0(.clk(clk), .reset_n(reset_n), .in(usr_btn[0]), .out(btn[0]));
+    debounce db_btn_1(.clk(clk), .reset_n(reset_n), .in(usr_btn[1]), .out(btn[1]));
+    debounce db_btn_2(.clk(clk), .reset_n(reset_n), .in(usr_btn[2]), .out(btn[2]));
+    debounce db_btn_3(.clk(clk), .reset_n(reset_n), .in(usr_btn[3]), .out(btn[3]));
 
     reg signed [3:0] counter;
     reg [3:0] brightness;
@@ -20,24 +20,23 @@ module lab4(
             counter <= 0;
         end
         else begin
-            if (usr_btn[0] && counter < 7) begin
+            if (btn[0] && counter < 7) begin
                 counter <= counter + 1;
             end
-            if (usr_btn[1] && counter > -8) begin
+            if (btn[1] && counter > -8) begin
                 counter <= counter - 1;
             end
-            if (usr_btn[2] && brightness < 4) begin
+            if (btn[2] && brightness < 4) begin
                 brightness <= brightness + 1;
             end
-            if (usr_btn[3] && brightness > 0) begin
+            if (btn[3] && brightness > 0) begin
                 brightness <= brightness - 1;
             end
         end
     end
 
     wire onoff;
-    pwm_signal pwm(.clk(clk), .brightness(brightness), .onoff(onoff));
-
+    pwm_signal pwm(.clk(clk), .reset_n(reset_n), .brightness(brightness), .onoff(onoff));
     integer i;
     always @(posedge clk) begin
         for (i = 0; i < 4; i = i+1) begin
@@ -48,46 +47,56 @@ endmodule
 
 module debounce(
     input  clk,
+    input  reset_n,
     input  in,
     output reg out
 );
+    reg init, stat;
     integer cnt;
-    reg stat;
     always @(posedge clk) begin
-        if (stat !== in) begin
-            stat <= in;
-            cnt <= 0;
+        if (!reset_n) begin
+            init <= 0;
         end
-        else if (stat !== out) begin
-            if (cnt >= 10) begin
-                out <= stat;
+        else begin
+            if (init === 0 || stat !== in) begin
+                init <= 1;
+                stat <= in;
+                cnt <= 0;
             end
-            cnt <= cnt+1;
+            else if (stat !== out) begin
+                if (cnt >= 10) begin
+                    out <= stat;
+                end
+                cnt <= cnt+1;
+            end
         end
     end
 endmodule
 
 module pwm_signal(
     input  clk,
+    input  reset_n,
     input  [3:0] brightness,
     output reg onoff
 );
     integer cnt;
-
-    initial begin
-        onoff <= 1;
-        cnt <= 0;
-    end
+    localparam TICK = 10000;
 
     always @(posedge clk) begin
-        cnt <= cnt == 1000000 ? 0 : cnt+1;
-        case (brightness)
-            0: onoff <= cnt <   50000;
-            1: onoff <= cnt <  250000;
-            2: onoff <= cnt <  500000;
-            3: onoff <= cnt <  750000;
-            4: onoff <= cnt < 1000000;
-            default: onoff <= 1;
-        endcase
+        if (!reset_n) begin
+            onoff <= 1;
+            cnt <= 0;
+        end
+        else begin
+            cnt <= cnt == TICK * 100 ? 0 : cnt+1;
+            case (brightness)
+                0: onoff <= cnt < TICK *   5;
+                1: onoff <= cnt < TICK *  25;
+                2: onoff <= cnt < TICK *  50;
+                3: onoff <= cnt < TICK *  75;
+                4: onoff <= cnt < TICK * 100;
+                default: onoff <= 1;
+            endcase
+        end
     end
 endmodule
