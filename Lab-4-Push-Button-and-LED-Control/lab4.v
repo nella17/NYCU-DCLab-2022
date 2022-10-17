@@ -11,6 +11,7 @@ module lab4(
     debounce db_btn_1(.clk(clk), .reset_n(reset_n), .in(usr_btn[1]), .out(btn[1]));
     debounce db_btn_2(.clk(clk), .reset_n(reset_n), .in(usr_btn[2]), .out(btn[2]));
     debounce db_btn_3(.clk(clk), .reset_n(reset_n), .in(usr_btn[3]), .out(btn[3]));
+    reg [3:0] prev_btn;
 
     reg signed [3:0] counter;
     reg [3:0] brightness;
@@ -18,20 +19,22 @@ module lab4(
     always @(posedge clk) begin
         if (!reset_n) begin
             counter <= 0;
+            prev_btn <= 0;
         end
         else begin
-            if (btn[0] && counter < 7) begin
+            if (prev_btn[0] && !btn[0] && counter < 7) begin
                 counter <= counter + 1;
             end
-            if (btn[1] && counter > -8) begin
+            if (prev_btn[1] && !btn[1] && counter > -8) begin
                 counter <= counter - 1;
             end
-            if (btn[2] && brightness < 4) begin
+            if (prev_btn[2] && !btn[2] && brightness < 4) begin
                 brightness <= brightness + 1;
             end
-            if (btn[3] && brightness > 0) begin
+            if (prev_btn[3] && !btn[3] && brightness > 0) begin
                 brightness <= brightness - 1;
             end
+            prev_btn <= btn;
         end
     end
 
@@ -58,13 +61,13 @@ module debounce(
             init <= 0;
         end
         else begin
-            if (init === 0 || stat !== in) begin
+            if (init == 0 || stat != in) begin
                 init <= 1;
                 stat <= in;
                 cnt <= 0;
             end
-            else if (stat !== out) begin
-                if (cnt >= 10) begin
+            else if (stat != out) begin
+                if (cnt >= 10000) begin
                     out <= stat;
                 end
                 cnt <= cnt+1;
