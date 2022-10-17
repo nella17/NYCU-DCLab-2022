@@ -59,9 +59,29 @@ module lab5(
 endmodule
 
 module debounce(
-    input clk,
-    input btn_input,
-    output btn_output
+    input  clk,
+    input  reset_n,
+    input  in,
+    output reg out
 );
-    assign btn_output = btn_input;
+    reg init, stat;
+    integer cnt;
+    always @(posedge clk) begin
+        if (!reset_n) begin
+            init <= 0;
+        end
+        else begin
+            if (init == 0 || stat != in) begin
+                init <= 1;
+                stat <= in;
+                cnt <= 0;
+            end
+            else if (stat != out) begin
+                if (cnt >= 10) begin
+                    out <= stat;
+                end
+                cnt <= cnt+1;
+            end
+        end
+    end
 endmodule
