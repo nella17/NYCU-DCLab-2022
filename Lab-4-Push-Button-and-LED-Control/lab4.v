@@ -67,7 +67,7 @@ module debounce(
                 cnt <= 0;
             end
             else if (stat != out) begin
-                if (cnt >= 10000) begin
+                if (cnt >= 10) begin
                     out <= stat;
                 end
                 cnt <= cnt+1;
