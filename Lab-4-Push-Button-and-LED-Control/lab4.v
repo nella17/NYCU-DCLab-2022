@@ -7,11 +7,23 @@ module lab4(
 );
 
     wire [3:0] btn;
-    debounce db_btn_0(.clk(clk), .reset_n(reset_n), .in(usr_btn[0]), .out(btn[0]));
-    debounce db_btn_1(.clk(clk), .reset_n(reset_n), .in(usr_btn[1]), .out(btn[1]));
-    debounce db_btn_2(.clk(clk), .reset_n(reset_n), .in(usr_btn[2]), .out(btn[2]));
-    debounce db_btn_3(.clk(clk), .reset_n(reset_n), .in(usr_btn[3]), .out(btn[3]));
+    genvar gi;
+    generate for(gi = 0; gi < 4; gi = gi+1)
+        debounce db_btn(.clk(clk), .reset_n(reset_n), .in(usr_btn[gi]), .out(btn[gi]));
+    endgenerate
+
     reg [3:0] prev_btn;
+    always @(posedge clk) begin
+        if (!reset_n)
+            prev_btn <= 0;
+        else
+            prev_btn <= btn;
+    end
+
+    wire [3:0] btn_pressed;
+    generate for(gi = 0; gi < 4; gi = gi+1)
+        assign btn_pressed[gi] = ~prev_btn[gi] && btn[gi];
+    endgenerate
 
     reg signed [3:0] counter;
     reg [3:0] brightness;
@@ -19,22 +31,16 @@ module lab4(
     always @(posedge clk) begin
         if (!reset_n) begin
             counter <= 0;
-            prev_btn <= 0;
-        end
-        else begin
-            if (prev_btn[0] && !btn[0] && counter < 7) begin
+            brightness <= 0;
+        end else begin
+            if (btn_pressed[0] && counter < 7)
                 counter <= counter + 1;
-            end
-            if (prev_btn[1] && !btn[1] && counter > -8) begin
+            if (btn_pressed[1] && counter > -8)
                 counter <= counter - 1;
-            end
-            if (prev_btn[2] && !btn[2] && brightness < 4) begin
+            if (btn_pressed[2] && brightness < 4)
                 brightness <= brightness + 1;
-            end
-            if (prev_btn[3] && !btn[3] && brightness > 0) begin
+            if (btn_pressed[3] && brightness > 0)
                 brightness <= brightness - 1;
-            end
-            prev_btn <= btn;
         end
     end
 
@@ -42,9 +48,8 @@ module lab4(
     pwm_signal pwm(.clk(clk), .reset_n(reset_n), .brightness(brightness), .onoff(onoff));
     integer i;
     always @(posedge clk) begin
-        for (i = 0; i < 4; i = i+1) begin
+        for (i = 0; i < 4; i = i+1)
             usr_led[i] <= counter[i] & onoff;
-        end
     end
 endmodule
 
@@ -59,18 +64,16 @@ module debounce(
     always @(posedge clk) begin
         if (!reset_n) begin
             init <= 0;
-        end
-        else begin
+        end else begin
             if (init == 0 || stat != in) begin
                 init <= 1;
                 stat <= in;
                 cnt <= 0;
-            end
-            else if (stat != out) begin
-                if (cnt >= 10) begin
+            end else if (stat != out) begin
+                if (cnt < 10)
+                    cnt <= cnt+1;
+                else
                     out <= stat;
-                end
-                cnt <= cnt+1;
             end
         end
     end
@@ -89,8 +92,7 @@ module pwm_signal(
         if (!reset_n) begin
             onoff <= 1;
             cnt <= 0;
-        end
-        else begin
+        end else begin
             cnt <= cnt == TICK * 100 ? 0 : cnt+1;
             case (brightness)
                 0: onoff <= cnt < TICK *   5;
