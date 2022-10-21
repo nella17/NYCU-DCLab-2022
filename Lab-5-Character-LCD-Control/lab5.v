@@ -1,4 +1,6 @@
-`define TICKS 70000000
+`define SIZE 25
+`define TICKS 70_000_000
+`define TEXT "Fibo #?? is ????"
 `define N2T(i, bits, in, out, off) \
     for(i = 0; i < bits; i = i+1) \
         out[8*(off+i) +: 8] <= in[i*4 +: 4] + ((in[i*4 +: 4] < 10) ? "0" : "A"-10);
@@ -21,8 +23,8 @@ module lab5(
 
     wire btn_level, btn_pressed;
     reg prev_btn_level;
-    reg [0:127] row_A = "Fibo #?? is ????";
-    reg [0:127] row_B = "Fibo #?? is ????";
+    reg [0:127] row_A = `TEXT;
+    reg [0:127] row_B = `TEXT;
 
     LCD_module lcd0(
         .clk(clk),
@@ -35,7 +37,7 @@ module lab5(
         .LCD_D(LCD_D)
     );
 
-    debounce btn_db0(
+    debounce btn_db(
         .clk(clk),
         .reset_n(reset_n),
         .in(usr_btn[3]),
@@ -58,7 +60,7 @@ module lab5(
             dir <= ~dir;
     end
 
-    reg [0:15] fibo [1:25];
+    reg [0:15] fibo [1:`SIZE];
     reg done;
     reg [0:4] i;
     always @(posedge clk) begin
@@ -70,13 +72,13 @@ module lab5(
         end else if (~done) begin
             fibo[i] <= fibo[i-1] + fibo[i-2];
             i <= i+1;
-            if (i == 25)
+            if (i == `SIZE)
                 done <= 1;
         end
     end
 
     reg [0:7] idx;
-    wire [0:7] nxt = (idx == 25) ? 1 : idx+1;
+    wire [0:7] nxt = (idx == `SIZE) ? 1 : idx+1;
     integer cnt;
     always @(posedge clk) begin
         if (~reset_n) begin
@@ -88,9 +90,9 @@ module lab5(
             else begin
                 idx <= idx + (dir ? 1 : -1);
                 if (~dir)
-                    idx <= (idx == 25) ? 1 : idx+1;
+                    idx <= (idx == `SIZE) ? 1 : idx+1;
                 else
-                    idx <= (idx == 1) ? 25 : idx-1;
+                    idx <= (idx == 1) ? `SIZE : idx-1;
                 cnt <= 0;
             end
         end
@@ -99,8 +101,8 @@ module lab5(
     integer j;
     always @(posedge clk) begin
         if (~reset_n) begin
-            row_A <= "Fibo #?? is ????";
-            row_B <= "Fibo #?? is ????";
+            row_A <= `TEXT;
+            row_B <= `TEXT;
         end else if (done) begin
             `N2T(j, 2, idx, row_A, 6)
             `N2T(j, 2, nxt, row_B, 6)
@@ -120,20 +122,18 @@ module debounce(
     reg init, stat;
     integer cnt;
     always @(posedge clk) begin
-        if (~reset_n) begin
+        if (!reset_n) begin
             init <= 0;
-        end
-        else begin
+        end else begin
             if (init == 0 || stat != in) begin
                 init <= 1;
                 stat <= in;
                 cnt <= 0;
-            end
-            else if (stat != out) begin
-                if (cnt >= 10) begin
+            end else if (stat != out) begin
+                if (cnt < 10)
+                    cnt <= cnt+1;
+                else
                     out <= stat;
-                end
-                cnt <= cnt+1;
             end
         end
     end
