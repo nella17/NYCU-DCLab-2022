@@ -19,11 +19,7 @@ module lab4(
         else
             prev_btn <= btn;
     end
-
-    wire [3:0] btn_pressed;
-    generate for(gi = 0; gi < 4; gi = gi+1) begin
-        assign btn_pressed[gi] = ~prev_btn[gi] && btn[gi];
-    end endgenerate
+    wire [3:0] btn_pressed = ~prev_btn & btn;
 
     reg signed [3:0] counter;
     reg [3:0] brightness;
@@ -46,9 +42,7 @@ module lab4(
 
     wire onoff;
     pwm_signal pwm(.clk(clk), .reset_n(reset_n), .brightness(brightness), .onoff(onoff));
-    generate for(gi = 0; gi < 4; gi = gi+1) begin
-        assign usr_led[gi] = counter[gi] & onoff;
-    end endgenerate
+    assign usr_led = onoff ? counter : 0;
 endmodule
 
 module debounce(
