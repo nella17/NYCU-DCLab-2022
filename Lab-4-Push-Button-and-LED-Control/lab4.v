@@ -45,16 +45,18 @@ module lab4(
     assign usr_led = onoff ? counter : 0;
 endmodule
 
-module debounce(
+module debounce #(
+    parameter CNT = 10
+)(
     input  clk,
     input  reset_n,
     input  in,
     output reg out
 );
     reg init, stat;
-    integer cnt;
+    reg [0:$clog2(CNT)] cnt;
     always @(posedge clk) begin
-        if (!reset_n) begin
+        if (~reset_n) begin
             init <= 0;
         end else begin
             if (init == 0 || stat != in) begin
@@ -62,7 +64,7 @@ module debounce(
                 stat <= in;
                 cnt <= 0;
             end else if (stat != out) begin
-                if (cnt < 10)
+                if (cnt < CNT)
                     cnt <= cnt+1;
                 else
                     out <= stat;
@@ -71,17 +73,18 @@ module debounce(
     end
 endmodule
 
-module pwm_signal(
+module pwm_signal #(
+    parameter TICK = 10000,
+    parameter [0:8*5-1] PERCENTAGE = {
+        8'd5, 8'd25, 8'd50, 8'd75, 8'd100
+    }
+)(
     input  clk,
     input  reset_n,
     input  [3:0] brightness,
     output onoff
 );
-    integer cnt;
-    localparam TICK = 10000;
-    localparam [0:8*5-1] PERCENTAGE = {
-        8'd5, 8'd25, 8'd50, 8'd75, 8'd100
-    };
+    reg [0:$clog2(TICK)] cnt;
 
     assign onoff = cnt < TICK * PERCENTAGE[brightness*8 +: 8];
 
@@ -89,6 +92,6 @@ module pwm_signal(
         if (!reset_n)
             cnt <= 0;
         else
-            cnt <= cnt == TICK * 100 ? 0 : cnt+1;
+            cnt <= cnt < TICK * 100 ? cnt+1 : 0;
     end
 endmodule
