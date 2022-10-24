@@ -1,21 +1,23 @@
 `timescale 1ns / 1ps
 
 module lab6_tb();
+    localparam CRLF = "\x0D\x0A";
+    localparam CR = "\x0D";
+    localparam LF = "\x0A";
 
     reg  sys_clk = 0;
     reg  reset = 0;
     reg  [3:0] btn = 4'b0;
     reg  rx = 1;
-    wire tx_unknown = 0;
-    wire tx = tx_unknown !== 0;
-    wire [3:0] led = 4'b0;
+    wire tx;
+    wire [3:0] led;
 
     lab6 uut(
         .clk(sys_clk),
         .reset_n(~reset),
         .usr_btn(btn),
         .uart_rx(rx),
-        .uart_tx(tx_unknown),
+        .uart_tx(tx),
         .usr_led(led)
     );
 
@@ -35,9 +37,9 @@ module lab6_tb();
     always #5 sys_clk <= ~sys_clk;
 
     localparam IN_SIZE = 10;
-    wire [0:8*IN_SIZE-1] in = {
-        "65535", "\x0D\x0A",
-        "1", "\x0D\x0A",
+    reg [0:8*IN_SIZE-1] in = {
+        "1234", CRLF,
+        "15", CRLF
     };
     localparam OUT_SIZE = 40;
     reg [8*OUT_SIZE-1:0] out = 0;
@@ -63,15 +65,17 @@ module lab6_tb();
     event read_done_trigger;
     event input_done_trigger;
     initial begin
-        forever begin
-            @ (posedge read_de); -> read_trigger;
-            @ (negedge read_de); -> read_done_trigger;
-            @ (input_done_trigger);
-            $display("%s", out); out = 0;
-            /* @ (posedge read_de); */ -> read_trigger;
-            @ (negedge read_de); -> read_done_trigger;
-            $display("%s", out); out = 0;
-        end
+        @ (posedge read_de); -> read_trigger;
+        @ (negedge read_de); -> read_done_trigger;
+        @ (input_done_trigger);
+        $display("%s", out); out = 0;
+        /*@ (posedge read_de);*/ -> read_trigger;
+        @ (negedge read_de); -> read_done_trigger;
+        @ (input_done_trigger);
+        $display("%s", out); out = 0;
+        /*@ (posedge read_de);*/ -> read_trigger;
+        @ (negedge read_de); -> read_done_trigger;
+        $display("%s", out); out = 0;
     end
 
     reg [0:$clog2(IN_SIZE)] i;
@@ -86,11 +90,13 @@ module lab6_tb();
             for (j = 0; j < 8; j = j+1)
                 #104_167 rx = tmp_in[j];
             #104_167 rx = 1;
-            if (tmp_in == "\x0A") begin
+            #104_167;
+            #104_167;
+            #104_167;
+            if (tmp_in == LF) begin
                 -> input_done_trigger;
+                #104_167;
                 @ (read_done_trigger);
-                if (i+1 != IN_SIZE)
-                    @ (read_done_trigger);
             end
         end
 
