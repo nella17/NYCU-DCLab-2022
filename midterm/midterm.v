@@ -19,40 +19,41 @@ module midterm(
     output [3:0] LCD_D
 );
 
-    reg [0:$clog2(PLAY_TICKS)] play_cnt;
-    reg signed [0:$clog2(PLAY_SEC)] sec_cnt;
-    reg [0:2] reset_counter;
-    reg [0:$clog2(RESET_TICKS)] reset_cnt;
-    reg soft_reset;
+    reg [0:$clog2(PLAY_TICKS)] play_cnt = 0;
+    reg signed [0:$clog2(PLAY_SEC)] sec_cnt = PLAY_SEC;
+    reg [0:2] reset_counter = 0;
+    reg [0:$clog2(RESET_TICKS)] reset_cnt = 0;
+    reg soft_reset = 0;
 
     localparam [0:3] S_MAIN_INIT    = 0,
                      S_MAIN_WAIT    = 1,
                      S_MAIN_PLAY    = 2,
                      S_MAIN_OVER    = 3;
-    reg [0:3] P, P_next;
-    wire playing, done;
+    reg [0:3] P = S_MAIN_INIT, P_next = S_MAIN_INIT;
+    wire initialing, playing, done;
 
     wire [3:0] btn;
     reg [3:0] prev_btn;
     wire [3:0] btn_pressed;
 
-    reg right_shoot, wrong_shoot;
-    reg [0:8] wac;
+    reg right_shoot = 0, wrong_shoot = 0;
+    reg [0:8] wac = " ";
 
     wire new_zombie;
-    reg [0:4] init_i;
-    reg [0:1] init_j;
-    reg zombie_new_idx;
-    reg [0:16] zombies;
+    reg [0:4] init_i = 0;
+    reg [0:1] init_j = 0;
+    reg zombie_new_idx = 0;
+    reg [0:16] zombies = 0;
     reg [0:3] zombie_cnt [0:2];
 
     genvar gi;
 
     // LOGIC
+    assign initialing = P == S_MAIN_INIT;
     assign playing = P == S_MAIN_PLAY;
     assign done = sec_cnt <= 0;
     always @(posedge clk) begin
-        if (reset) begin
+        if (reset || initialing) begin
             play_cnt <= 0;
             sec_cnt <= PLAY_SEC;
         end else if (playing) begin
@@ -112,7 +113,6 @@ module midterm(
     end
 
     // zombie
-    assign new_zombie = init_i < 16 || right_shoot;
     always @(posedge clk) begin
         if (reset) begin
             init_i <= 0;
@@ -120,6 +120,8 @@ module midterm(
             init_i <= init_i + 1;
         end
     end
+
+    assign new_zombie = initialing || right_shoot;
     always @(posedge clk) begin
         if (reset) begin
             init_j <= 0;
@@ -142,8 +144,9 @@ module midterm(
         end
     end
 
+    reg signed [0:3] i;
     always @(posedge clk) begin
-        if (reset) begin
+        if (reset || initialing) begin
             wac <= " ";
             zombie_cnt[0] <= 0;
             zombie_cnt[1] <= 0;
@@ -191,7 +194,7 @@ module midterm(
             end
         end
     end
-    assign reset = ~reset_n | soft_reset;
+    assign reset = (~reset_n) || soft_reset;
 
     // btns
     generate for(gi = 0; gi < 4; gi = gi+1) begin
@@ -211,13 +214,13 @@ module midterm(
     end endgenerate
 
     // LCD
-    reg [0:127] row_A_init = "PRESS BTN0      ";
-    reg [0:127] row_B_init = "TO START        ";
-    reg [0:127] row_A_done = "   GAME OVER    ";
-    reg [0:127] row_B_done = "KILL 000 ZOMBIES";
+    localparam row_A_init = "PRESS BTN0      ";
+    localparam row_B_init = "TO START        ";
+    localparam row_A_done = "   GAME OVER    ";
+    localparam row_B_done = "KILL 000 ZOMBIES";
 
-    reg [0:127] row_A;
-    reg [0:127] row_B;
+    reg [0:127] row_A = row_A_init;
+    reg [0:127] row_B = row_B_init;
 
     LCD_module lcd0(
         .clk(clk),
@@ -233,7 +236,7 @@ module midterm(
     reg [0:3] lcd_i;
     reg [0:2] lcd_draw;
     always @(posedge clk) begin
-        if (reset) begin
+        if (reset || initialing) begin
             lcd_i <= 0;
             row_A <= row_A_init;
             row_B <= row_B_init;
