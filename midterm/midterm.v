@@ -241,22 +241,29 @@ module midterm(
             row_B[lcd_i*8 +: 8] <= zombies[lcd_i] ? sps : "o";
             lcd_i <= lcd_i + 1;
         end else if (done) begin
-            if (lcd_draw == 0) begin
-                row_A <= row_A_done;
-                row_B <= row_B_done;
-                lcd_i <= 0;
-                lcd_draw <= 1;
-            end else if (lcd_draw == 1) begin
-                if (lcd_i < 3) begin
-                    lcd_draw <= 2;
-                    row_B[8*(7-lcd_i) +: 8] <= "0" + zombie_cnt[lcd_i];
-                end else begin
-                    lcd_draw <= 3;
+            case (lcd_draw)
+                0: begin
+                    row_A <= row_A_done;
+                    row_B <= row_B_done;
+                    lcd_i <= 0;
+                    lcd_draw <= 1;
                 end
-            end else if (lcd_draw == 2) begin
-                lcd_draw <= 1;
-                lcd_i <= 1;
-            end
+                1: begin
+                    if (lcd_i < 3) begin
+                        lcd_draw <= 2;
+                        row_B[8*(7-lcd_i) +: 8] <= "0" + zombie_cnt[lcd_i];
+                    end else begin
+                        lcd_draw <= 3;
+                    end
+                end
+                2: begin
+                    lcd_draw <= 1;
+                    lcd_i <= 1;
+                end
+                3: begin
+                    lcd_draw <= 0;
+                end
+            endcase
         end
     end
 
