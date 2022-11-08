@@ -152,20 +152,9 @@ module midterm(
             zombie_cnt[1] <= 0;
             zombie_cnt[2] <= 0;
         end else if (right_shoot) begin
-            if (zombie_cnt[0] < 9)
-                zombie_cnt[0] <= zombie_cnt[0] + 1;
-            else begin
-                zombie_cnt[0] <= 0;
-                if (zombie_cnt[1] < 9)
-                    zombie_cnt[1] <= zombie_cnt[1] + 1;
-                else begin
-                    zombie_cnt[1] <= 0;
-                    if (zombie_cnt[2] < 9)
-                        zombie_cnt[2] <= zombie_cnt[2] + 1;
-                    else
-                        zombie_cnt[2] <= 0;
-                end
-            end
+            for (i = 2; i > 0; i = i - 1)
+                zombie_cnt[i] <= zombie_cnt[i] < 9 ? zombie_cnt[i] + (zombie_cnt[i-1] == 9) : 0;
+            zombie_cnt[0] <= zombie_cnt[0] < 9 ? zombie_cnt[0] + 1 : 0;
             wac <= " ";
         end else if (wrong_shoot) begin
             wac <= "x";
@@ -235,6 +224,7 @@ module midterm(
 
     reg [0:3] lcd_i;
     reg [0:2] lcd_draw;
+    assign sps = lcd_i == 15 ? wac : " ";
     always @(posedge clk) begin
         if (reset || initialing) begin
             lcd_i <= 0;
@@ -242,23 +232,14 @@ module midterm(
             row_B <= row_B_init;
             lcd_draw <= 0;
         end else if (playing) begin
-            if (lcd_i == 0) begin
+            if (lcd_i == 0)
                 row_A[lcd_i*8 +: 8] <= sec_cnt == 10 ? "1" : "0";
-                row_B[lcd_i*8 +: 8] <= zombies[lcd_i] ? " " : "o";
-                lcd_i <= lcd_i + 1;
-            end else if (lcd_i == 1) begin
+            else if (lcd_i == 1)
                 row_A[lcd_i*8 +: 8] <= sec_cnt == 10 ? "0" : ("0" + sec_cnt);
-                row_B[lcd_i*8 +: 8] <= zombies[lcd_i] ? " " : "o";
-                lcd_i <= lcd_i + 1;
-            end else if (lcd_i == 15) begin
-                row_A[lcd_i*8 +: 8] <= zombies[lcd_i] ? "o" : wac;
-                row_B[lcd_i*8 +: 8] <= zombies[lcd_i] ? wac : "o";
-                lcd_i <= lcd_i + 1;
-            end else begin
-                row_A[lcd_i*8 +: 8] <= zombies[lcd_i] ? "o" : " ";
-                row_B[lcd_i*8 +: 8] <= zombies[lcd_i] ? " " : "o";
-                lcd_i <= lcd_i + 1;
-            end
+            else
+                row_A[lcd_i*8 +: 8] <= zombies[lcd_i] ? "o" : sps;
+            row_B[lcd_i*8 +: 8] <= zombies[lcd_i] ? sps : "o";
+            lcd_i <= lcd_i + 1;
         end else if (done) begin
             if (lcd_draw == 0) begin
                 row_A <= row_A_done;
