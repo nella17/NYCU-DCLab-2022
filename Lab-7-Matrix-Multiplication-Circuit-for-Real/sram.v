@@ -32,13 +32,13 @@ module sram #(
 )(
     input clk,
     input we, input en,
-    input  [0:ADDR_WIDTH-1] addr,
-    input  [0:DATA_WIDTH-1] data_i,
-    output reg [0: DATA_WIDTH-1] data_o
+    input  [ADDR_WIDTH-1:0] addr,
+    input  [DATA_WIDTH-1:0] data_i,
+    output reg [DATA_WIDTH-1:0] data_o
 );
 
     // Declareation of the memory cells
-    reg [0:DATA_WIDTH-1] RAM [0:RAM_SIZE-1];
+    reg [DATA_WIDTH-1:0] RAM [RAM_SIZE-1:0];
 
     // ------------------------------------
     // SRAM cell initialization

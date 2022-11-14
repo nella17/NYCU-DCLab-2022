@@ -8,7 +8,7 @@ module debounce #(
     output reg out
 );
     reg init = 0, stat;
-    reg [0:$clog2(CNT)] cnt;
+    reg [$clog2(CNT):0] cnt;
     always @(posedge clk) begin
         if (~reset_n) begin
             init <= 0;
