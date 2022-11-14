@@ -38,8 +38,6 @@ module sram #(
     output reg [0: DATA_WIDTH-1] data_o
 );
 
-    wire write = en & we;
-
     // Declareation of the memory cells
     reg [0: DATA_WIDTH-1] RAM [0: RAM_SIZE-1];
 
@@ -55,14 +53,18 @@ module sram #(
     // SRAM read operation
     // ------------------------------------
     always@(posedge clk) begin
-        date_o <=  write ? data_i : RAM[addr];
+        if (en) begin
+            data_o <= we ? data_i : RAM[addr];
+        end
     end
 
     // ------------------------------------
     // SRAM write operation
     // ------------------------------------
     always@(posedge clk) begin
-        if (write) RAM[addr] <= data_i;
+        if (en) begin
+            if (we) RAM[addr] <= data_i;
+        end
     end
 
 endmodule
