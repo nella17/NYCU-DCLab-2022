@@ -27,42 +27,42 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module sram
-#(parameter DATA_WIDTH = 8, ADDR_WIDTH = 11, RAM_SIZE = 1024)
- (input clk, input we, input en,
-  input  [ADDR_WIDTH-1 : 0] addr,
-  input  [DATA_WIDTH-1 : 0] data_i,
-  output reg [DATA_WIDTH-1 : 0] data_o);
+module sram #(
+    parameter DATA_WIDTH = 8, ADDR_WIDTH = 11, RAM_SIZE = 1024
+)(
+    input clk,
+    input we,
+    input en,
+    input  [0: ADDR_WIDTH-1] addr,
+    input  [0: DATA_WIDTH-1] data_i,
+    output reg [0: DATA_WIDTH-1] data_o
+);
 
-// Declareation of the memory cells
-reg [DATA_WIDTH-1 : 0] RAM [RAM_SIZE - 1:0];
+    wire write = en & we;
 
-// ------------------------------------
-// SRAM cell initialization
-// ------------------------------------
-// Initialize the sram cells with the values defined in "image.dat."
-initial begin
-    $readmemh("matrices.mem", RAM);
-end
+    // Declareation of the memory cells
+    reg [0: DATA_WIDTH-1] RAM [0: RAM_SIZE-1];
 
-// ------------------------------------
-// SRAM read operation
-// ------------------------------------
-always@(posedge clk)
-begin
-  if (en & we)
-    data_o <= data_i;
-  else
-    data_o <= RAM[addr];
-end
+    // ------------------------------------
+    // SRAM cell initialization
+    // ------------------------------------
+    // Initialize the sram cells with the values defined in "matrices.mem"
+    initial begin
+        $readmemh("matrices.mem", RAM);
+    end
 
-// ------------------------------------
-// SRAM write operation
-// ------------------------------------
-always@(posedge clk)
-begin
-  if (en & we)
-    RAM[addr] <= data_i;
-end
+    // ------------------------------------
+    // SRAM read operation
+    // ------------------------------------
+    always@(posedge clk) begin
+        date_o <=  write ? data_i : RAM[addr];
+    end
+
+    // ------------------------------------
+    // SRAM write operation
+    // ------------------------------------
+    always@(posedge clk) begin
+        if (write) RAM[addr] <= data_i;
+    end
 
 endmodule
