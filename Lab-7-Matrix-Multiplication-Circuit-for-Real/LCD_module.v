@@ -1,3 +1,4 @@
+`timescale 1ns / 1ps
 /* ------------------------------------------------------------------- */
 /*  Modified from a Xilinx 1602 LCD controller by Chun-Jen Tsai.       */
 /*  The timing of the original Xilinx controller does not work for the */

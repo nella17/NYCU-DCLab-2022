@@ -31,15 +31,14 @@ module sram #(
     parameter DATA_WIDTH = 8, ADDR_WIDTH = 11, RAM_SIZE = 1024
 )(
     input clk,
-    input we,
-    input en,
-    input  [0: ADDR_WIDTH-1] addr,
-    input  [0: DATA_WIDTH-1] data_i,
+    input we, input en,
+    input  [0:ADDR_WIDTH-1] addr,
+    input  [0:DATA_WIDTH-1] data_i,
     output reg [0: DATA_WIDTH-1] data_o
 );
 
     // Declareation of the memory cells
-    reg [0: DATA_WIDTH-1] RAM [0: RAM_SIZE-1];
+    reg [0:DATA_WIDTH-1] RAM [0:RAM_SIZE-1];
 
     // ------------------------------------
     // SRAM cell initialization
@@ -54,7 +53,10 @@ module sram #(
     // ------------------------------------
     always@(posedge clk) begin
         if (en) begin
-            data_o <= we ? data_i : RAM[addr];
+            if (we)
+                data_o <= data_i;
+            else
+                data_o <= RAM[addr];
         end
     end
 
@@ -63,7 +65,8 @@ module sram #(
     // ------------------------------------
     always@(posedge clk) begin
         if (en) begin
-            if (we) RAM[addr] <= data_i;
+            if (we)
+                RAM[addr] <= data_i;
         end
     end
 

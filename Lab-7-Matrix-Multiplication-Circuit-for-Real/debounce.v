@@ -1,3 +1,4 @@
+`timescale 1ns / 1ps
 module debounce #(
     parameter CNT = 10
 )(
@@ -6,17 +7,17 @@ module debounce #(
     input  in,
     output reg out
 );
-    reg init, stat;
+    reg init = 0, stat;
     reg [0:$clog2(CNT)] cnt;
     always @(posedge clk) begin
         if (~reset_n) begin
             init <= 0;
         end else begin
-            if (init == 0 || stat != in) begin
+            if (init == 0 || stat !== in) begin
                 init <= 1;
                 stat <= in;
                 cnt <= 0;
-            end else if (stat != out) begin
+            end else if (stat !== out) begin
                 if (cnt < CNT)
                     cnt <= cnt+1;
                 else
