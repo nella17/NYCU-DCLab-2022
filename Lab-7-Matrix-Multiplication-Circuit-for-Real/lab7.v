@@ -21,6 +21,18 @@ module lab7(
     input  uart_rx,
     output uart_tx
 );
+
+    localparam INIT_DELAY = 100_000; // 1 msec @ 100 MHz
+    reg [$clog2(INIT_DELAY):0] init_counter;
+
+    // Initialization counter.
+    always @(posedge clk) begin
+        if (~reset_n)
+            init_counter <= 0;
+        else
+            init_counter <= init_counter + (init_counter != INIT_DELAY);
+    end
+
     localparam SIZE = 4;
 
     localparam CRLF = "\x0D\x0A";
@@ -188,7 +200,7 @@ module lab7(
     always @(*) begin
         case (F)
             S_MAIN_WAIT:
-                if (btn_pressed)
+                if (init_counter == INIT_DELAY && btn_pressed)
                     F_next = S_MAIN_READ;
                 else
                     F_next = S_MAIN_WAIT;
