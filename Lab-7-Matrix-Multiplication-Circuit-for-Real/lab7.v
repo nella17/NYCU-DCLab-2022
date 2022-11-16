@@ -83,14 +83,12 @@ module lab7(
     reg [$clog2(M_SIZE):0] pk;
     wire calc_done;
 
-    reg [10:0] user_addr;
-    reg [17:0] user_data_in = 0;
     reg [0:19] user_data_out = 0;
 
     wire sram_write;
     wire sram_enable;
-    wire [10:0] sram_addr;
-    wire [17:0] sram_in;
+    reg [10:0] sram_addr;
+    reg [17:0] sram_in;
     wire [17:0] sram_out;
 
     wire btn, btn_pressed;
@@ -153,28 +151,26 @@ module lab7(
     // sram logic
     assign sram_enable = 1;
     assign sram_write = (F == S_MAIN_SAVE_WAIT);
-    assign sram_addr = user_addr;
-    assign sram_in = user_data_in;
     always @(posedge clk) begin
         if (~reset_n) begin
-            user_addr <= 0;
+            sram_addr <= 0;
         end else begin
             case (F)
                 S_MAIN_READ: begin
                     case (pn)
-                        0: user_addr <= (pn * M_SIZE * M_SIZE) | (pi) | (pk * M_SIZE);
-                        1: user_addr <= (pn * M_SIZE * M_SIZE) | (pk) | (pj * M_SIZE);
+                        0: sram_addr <= (pn * M_SIZE * M_SIZE) | (pi) | (pk * M_SIZE);
+                        1: sram_addr <= (pn * M_SIZE * M_SIZE) | (pk) | (pj * M_SIZE);
                         default: ;
                     endcase
                 end
                 // S_MAIN_READ_SAVE:
                 //     user_data_out <= sram_out;
                 S_MAIN_SAVE: begin
-                    user_addr <= (2 * M_SIZE * M_SIZE) | (pi) | (pj * M_SIZE);
-                    user_data_in <= sum;
+                    sram_addr <= (2 * M_SIZE * M_SIZE) | (pi) | (pj * M_SIZE);
+                    sram_in <= sum;
                 end
                 S_MAIN_SHOW_LOAD:
-                    user_addr <= (2 * M_SIZE * M_SIZE) | (pi) | (pj * M_SIZE);
+                    sram_addr <= (2 * M_SIZE * M_SIZE) | (pi) | (pj * M_SIZE);
                 S_MAIN_SHOW_SAVE:
                     user_data_out <= sram_out;
                 default: ;
