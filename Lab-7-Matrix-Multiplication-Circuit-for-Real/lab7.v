@@ -33,7 +33,7 @@ module lab7(
             init_counter <= init_counter + (init_counter != INIT_DELAY);
     end
 
-    localparam SIZE = 4;
+    localparam M_SIZE = 4;
 
     localparam CRLF = "\x0D\x0A";
     localparam CR = "\x0D";
@@ -78,9 +78,9 @@ module lab7(
     wire [7:0] num_low [0:1];
 
     reg [2:0] pn;
-    reg [$clog2(SIZE)*2:0] pij;
-    wire [$clog2(SIZE)-1:0] pi, pj;
-    reg [$clog2(SIZE):0] pk;
+    reg [$clog2(M_SIZE)*2:0] pij;
+    wire [$clog2(M_SIZE)-1:0] pi, pj;
+    reg [$clog2(M_SIZE):0] pk;
     wire calc_done;
 
     reg [10:0] user_addr;
@@ -110,9 +110,9 @@ module lab7(
     assign num_low[1] = num[1][7:0];
 
     // matrix logic
-    assign pi = pij[$clog2(SIZE)*2-1:$clog2(SIZE)*1];
-    assign pj = pij[$clog2(SIZE)*1-1:$clog2(SIZE)*0];
-    assign calc_done = pij[$clog2(SIZE)*2];
+    assign pi = pij[$clog2(M_SIZE)*2-1:$clog2(M_SIZE)*1];
+    assign pj = pij[$clog2(M_SIZE)*1-1:$clog2(M_SIZE)*0];
+    assign calc_done = pij[$clog2(M_SIZE)*2];
     always @(posedge clk) begin
         if (~reset_n) begin
             num[0] <= 0; num[1] <= 0; sum <= 0;
@@ -162,19 +162,19 @@ module lab7(
             case (F)
                 S_MAIN_READ: begin
                     case (pn)
-                        0: user_addr <= (pn * SIZE * SIZE) | (pi) | (pk * SIZE);
-                        1: user_addr <= (pn * SIZE * SIZE) | (pk) | (pj * SIZE);
+                        0: user_addr <= (pn * M_SIZE * M_SIZE) | (pi) | (pk * M_SIZE);
+                        1: user_addr <= (pn * M_SIZE * M_SIZE) | (pk) | (pj * M_SIZE);
                         default: ;
                     endcase
                 end
                 // S_MAIN_READ_SAVE:
                 //     user_data_out <= sram_out;
                 S_MAIN_SAVE: begin
-                    user_addr <= (2 * SIZE * SIZE) | (pi) | (pj * SIZE);
+                    user_addr <= (2 * M_SIZE * M_SIZE) | (pi) | (pj * M_SIZE);
                     user_data_in <= sum;
                 end
                 S_MAIN_SHOW_LOAD:
-                    user_addr <= (2 * SIZE * SIZE) | (pi) | (pj * SIZE);
+                    user_addr <= (2 * M_SIZE * M_SIZE) | (pi) | (pj * M_SIZE);
                 S_MAIN_SHOW_SAVE:
                     user_data_out <= sram_out;
                 default: ;
@@ -192,7 +192,7 @@ module lab7(
         else begin
             case (F)
                 S_MAIN_SHOW_LOAD: begin
-                    idx <= 2 + pj * SIZE;
+                    idx <= 2 + pj * M_SIZE;
                 end
                 S_MAIN_SHOW_CALC: begin
                     `N2T(idx, 5, user_data_out, data, BODY_POS + 3 + pj * 7)
@@ -230,7 +230,7 @@ module lab7(
             S_MAIN_MULT:
                 F_next = S_MAIN_ADDI;
             S_MAIN_ADDI:
-                if (pk < SIZE)
+                if (pk < M_SIZE)
                     F_next = S_MAIN_READ;
                 else
                     F_next = S_MAIN_SAVE;
@@ -259,7 +259,7 @@ module lab7(
             S_MAIN_SHOW_CALC:
                 F_next = S_MAIN_SHOW_NEXT;
             S_MAIN_SHOW_NEXT:
-                if (pk < SIZE)
+                if (pk < M_SIZE)
                     F_next = S_MAIN_SHOW_LOAD;
                 else
                     F_next = S_MAIN_SHOW_BODY;
