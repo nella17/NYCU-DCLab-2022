@@ -9,10 +9,10 @@ module lab7_tb();
     reg  reset = 0;
 
     reg  [3:0] btn = 4'b0;
-    wire [3:0] led;
+    // wire [3:0] led;
 
-    wire LCD_RS, LCD_RW, LCD_E;
-    wire [3:0] LCD_D;
+    // wire LCD_RS, LCD_RW, LCD_E;
+    // wire [3:0] LCD_D;
 
     reg  rx = 1;
     wire tx;
@@ -21,11 +21,11 @@ module lab7_tb();
         .clk(sys_clk),
         .reset_n(~reset),
         .usr_btn(btn),
-        .usr_led(led),
-        .LCD_RS(LCD_RS),
-        .LCD_RW(LCD_RW),
-        .LCD_E(LCD_E),
-        .LCD_D(LCD_D),
+        // .usr_led(led),
+        // .LCD_RS(LCD_RS),
+        // .LCD_RW(LCD_RW),
+        // .LCD_E(LCD_E),
+        // .LCD_D(LCD_D),
         .uart_rx(rx),
         .uart_tx(tx)
     );
