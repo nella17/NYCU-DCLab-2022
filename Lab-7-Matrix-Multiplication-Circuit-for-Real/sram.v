@@ -28,7 +28,8 @@
 
 
 module sram #(
-    parameter DATA_WIDTH = 8, ADDR_WIDTH = 11, RAM_SIZE = 1024
+    parameter DATA_WIDTH = 8, ADDR_WIDTH = 11, RAM_SIZE = 1024,
+        INIT_MEM = "matrices.mem"
 )(
     input clk,
     input we, input en,
@@ -45,7 +46,7 @@ module sram #(
     // ------------------------------------
     // Initialize the sram cells with the values defined in "matrices.mem"
     initial begin
-        $readmemh("matrices.mem", RAM);
+        $readmemh(INIT_MEM, RAM);
     end
 
     // ------------------------------------
