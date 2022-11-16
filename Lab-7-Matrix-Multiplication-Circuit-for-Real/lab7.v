@@ -296,7 +296,7 @@ module lab7(
     );
 
     // LED
-    assign usr_led = sram_out[3:0];
+    // assign usr_led = sram_out[3:0];
 
     // btns
     debounce db_btn(.clk(clk), .reset_n(reset_n), .in(usr_btn[1]), .out(btn));
@@ -306,6 +306,7 @@ module lab7(
     assign btn_pressed = ~prev_btn & btn;
 
     // LCD
+    /*
     localparam row_A_init = "Data at [0x???] ";
     localparam row_B_init = " equals 0x????? ";
 
@@ -329,6 +330,7 @@ module lab7(
             row_B <= row_B_init;
         end
     end
+    //*/
 
     // uart
     uart uart(
