@@ -41,17 +41,17 @@ module lab7(
     localparam NULL = "\x00";
 
     localparam HEAD = "The matrix multiplication result is:";
-    localparam HEAD_LEN = 38+3, HEAD_POS = 0;
-    localparam BODY = "[ ?????, ?????, ?????, ????? ]";
-    localparam BODY_LEN = 30+3, BODY_POS = HEAD_POS + HEAD_LEN;
+    localparam HEAD_LEN = 41, HEAD_POS = 0;
+    localparam BODY = " [ ?????, ?????, ?????, ????? ]";
+    localparam BODY_LEN = 34, BODY_POS = HEAD_POS + HEAD_LEN;
     localparam MEM_SIZE   = HEAD_LEN + BODY_LEN;
 
-    reg [$clog2(MEM_SIZE):0] send_counter;
+    reg [$clog2(MEM_SIZE):0] send_counter = 0;
     reg [7:0] data [0:MEM_SIZE-1];
-    reg [0:HEAD_LEN*8-1] head = { HEAD, CRLF, NULL };
+    reg [0:HEAD_LEN*8-1] head = { CRLF, HEAD, CRLF, NULL };
     reg [0:BODY_LEN*8-1] body = { BODY, CRLF, NULL };
 
-    localparam [3:0] S_MAIN_WAIT = 0,
+    localparam [4:0] S_MAIN_WAIT = 0,
                      S_MAIN_READ = 1,
                      S_MAIN_READ_WAIT = 2,
                      S_MAIN_READ_SAVE = 3,
@@ -64,10 +64,13 @@ module lab7(
                      S_MAIN_SHOW_HEAD = 10,
                      S_MAIN_SHOW_LOAD = 11,
                      S_MAIN_SHOW_WAIT = 12,
-                     S_MAIN_SHOW_BODY = 13,
-                     S_MAIN_SHOW_INCR = 14,
-                     S_MAIN_DONE = 15;
-    reg [3:0] F, F_next;
+                     S_MAIN_SHOW_SAVE = 13,
+                     S_MAIN_SHOW_CALC = 14,
+                     S_MAIN_SHOW_NEXT = 15,
+                     S_MAIN_SHOW_BODY = 16,
+                     S_MAIN_SHOW_INCR = 17,
+                     S_MAIN_DONE = 18;
+    reg [4:0] F, F_next;
     wire print_enable, print_done;
 
     reg [17:0] num [0:1];
@@ -82,7 +85,7 @@ module lab7(
 
     reg [10:0] user_addr;
     reg [17:0] user_data_in = 0;
-    reg [19:0] user_data_out = 0;
+    reg [0:19] user_data_out = 0;
 
     wire sram_write;
     wire sram_enable;
@@ -117,7 +120,7 @@ module lab7(
         end else begin
             case (F)
                 S_MAIN_READ_SAVE: begin
-                    num[pn] <= sram_out + 0;
+                    num[pn] <= sram_out;
                     pn <= pn + 1;
                 end
                 S_MAIN_MULT: begin
@@ -129,19 +132,27 @@ module lab7(
                     sum <= sum + prod;
                 S_MAIN_SAVE_WAIT: begin
                     sum <= 0;
+                    pk <= 0;
                     if (~calc_done)
                         pij <= pij + 1;
                 end
-                S_MAIN_SHOW_INCR:
+                S_MAIN_SHOW_CALC: begin
+                    pk <= pk + 1;
+                    pij <= pij + 1;
+                end
+                S_MAIN_SHOW_INCR: begin
+                    pk <= 0;
                     if (calc_done)
                         pij <= pij + 1;
+                end
+                default: ;
             endcase
         end
     end
 
     // sram logic
     assign sram_enable = 1;
-    assign sram_write = (F == S_MAIN_SAVE);
+    assign sram_write = (F == S_MAIN_SAVE_WAIT);
     assign sram_addr = user_addr;
     assign sram_in = user_data_in;
     always @(posedge clk) begin
@@ -153,6 +164,7 @@ module lab7(
                     case (pn)
                         0: user_addr <= (pn * SIZE * SIZE) | (pi) | (pk * SIZE);
                         1: user_addr <= (pn * SIZE * SIZE) | (pk) | (pj * SIZE);
+                        default: ;
                     endcase
                 end
                 // S_MAIN_READ_SAVE:
@@ -161,11 +173,11 @@ module lab7(
                     user_addr <= (2 * SIZE * SIZE) | (pi) | (pj * SIZE);
                     user_data_in <= sum;
                 end
-                S_MAIN_SHOW_HEAD: begin
-                    user_addr <= (2 * SIZE * SIZE) | (pi) | (pj * SIZE);
-                end
                 S_MAIN_SHOW_LOAD:
+                    user_addr <= (2 * SIZE * SIZE) | (pi) | (pj * SIZE);
+                S_MAIN_SHOW_SAVE:
                     user_data_out <= sram_out;
+                default: ;
             endcase
         end
     end
@@ -182,14 +194,16 @@ module lab7(
                 S_MAIN_SHOW_LOAD: begin
                     idx <= 2 + pj * SIZE;
                 end
-                S_MAIN_SHOW_WAIT: begin
-                    `N2T(idx, 5, user_data_out, data, 2 + pj * SIZE)
+                S_MAIN_SHOW_CALC: begin
+                    `N2T(idx, 5, user_data_out, data, BODY_POS + 3 + pj * 7)
                 end
+                default: ;
             endcase
         end
     end
 
-    assign print_enable = (F == S_MAIN_SHOW_HEAD) || (F == S_MAIN_SHOW_BODY);
+    assign print_enable = (F != S_MAIN_SHOW_HEAD && F_next == S_MAIN_SHOW_HEAD) ||
+                        (F != S_MAIN_SHOW_BODY && F_next == S_MAIN_SHOW_BODY);
     assign print_done = tx_byte == NULL;
 
     always @(posedge clk) begin
@@ -228,7 +242,7 @@ module lab7(
                 if (calc_done)
                     F_next = S_MAIN_SHOW;
                 else
-                    F_next = S_MAIN_SHOW;
+                    F_next = S_MAIN_READ;
             S_MAIN_SHOW:
                 F_next = S_MAIN_SHOW_HEAD;
             S_MAIN_SHOW_HEAD:
@@ -239,28 +253,40 @@ module lab7(
             S_MAIN_SHOW_LOAD:
                 F_next = S_MAIN_SHOW_WAIT;
             S_MAIN_SHOW_WAIT:
-                F_next = S_MAIN_SHOW_BODY;
+                F_next = S_MAIN_SHOW_SAVE;
+            S_MAIN_SHOW_SAVE:
+                F_next = S_MAIN_SHOW_CALC;
+            S_MAIN_SHOW_CALC:
+                F_next = S_MAIN_SHOW_NEXT;
+            S_MAIN_SHOW_NEXT:
+                if (pk < SIZE)
+                    F_next = S_MAIN_SHOW_LOAD;
+                else
+                    F_next = S_MAIN_SHOW_BODY;
             S_MAIN_SHOW_BODY:
                 if (print_done)
                     F_next = S_MAIN_SHOW_INCR;
                 else
                     F_next = S_MAIN_SHOW_BODY;
             S_MAIN_SHOW_INCR:
-                F_next = S_MAIN_SHOW_BODY;
+                if (~calc_done)
+                    F_next = S_MAIN_DONE;
+                else
+                    F_next = S_MAIN_SHOW_LOAD;
             S_MAIN_DONE:
                 F_next = S_MAIN_DONE;
+            default:
+                F_next = S_MAIN_WAIT;
         endcase
     end
 
     always @(posedge clk) begin
-        case (F_next)
-            S_MAIN_SHOW_HEAD-1:
-                send_counter <= HEAD_POS;
-            S_MAIN_SHOW_BODY-1:
-                send_counter <= BODY_POS;
-            default:
-                send_counter <= send_counter + (U_next == S_UART_INCR);
-        endcase
+        if (F != S_MAIN_SHOW_HEAD && F_next == S_MAIN_SHOW_HEAD)
+            send_counter <= HEAD_POS;
+        else if (F != S_MAIN_SHOW_BODY && F_next == S_MAIN_SHOW_BODY)
+            send_counter <= BODY_POS;
+        else
+            send_counter <= send_counter + (U_next == S_UART_INCR);
     end
 
     // sram
@@ -348,6 +374,8 @@ module lab7(
                     U_next = S_UART_IDLE;
                 else
                     U_next = S_UART_WAIT;
+            default:
+                U_next = S_UART_IDLE;
         endcase
     end
 
