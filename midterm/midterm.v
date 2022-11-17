@@ -224,7 +224,7 @@ module midterm(
 
     reg [0:3] lcd_i;
     reg [0:2] lcd_draw;
-    assign sps = lcd_i == 15 ? wac : " ";
+    wire [0:7] sps = lcd_i == 15 ? wac : " ";
     always @(posedge clk) begin
         if (reset || initialing) begin
             lcd_i <= 0;
