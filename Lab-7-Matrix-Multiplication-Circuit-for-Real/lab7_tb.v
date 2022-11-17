@@ -79,7 +79,7 @@ module lab7_tb();
     initial begin
         #10 -> reset_trigger;
         @ (reset_done_trigger);
-        #100000000;
+        #100_000_000;
         #200 btn[1] = 1;
         @ (done_trigger);
         $finish;
