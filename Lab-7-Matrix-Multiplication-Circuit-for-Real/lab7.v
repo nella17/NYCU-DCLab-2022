@@ -110,11 +110,12 @@ module lab7(
                 end
                 S_MAIN_MULT: begin
                     prod <= num_low[0] * num_low[1];
-                    pn <= 0;
-                    pk <= pk + 1;
                 end
-                S_MAIN_ADDI:
+                S_MAIN_ADDI: begin
                     sum <= sum + prod;
+                    pk <= pk + 1;
+                    pn <= 0;
+                end
                 S_MAIN_CALC: begin
                     pk <= 0;
                     user_data_out <= sum;
@@ -177,7 +178,7 @@ module lab7(
             S_MAIN_MULT:
                 F_next = S_MAIN_ADDI;
             S_MAIN_ADDI:
-                if (pk < M_SIZE)
+                if (pk < M_SIZE-1)
                     F_next = S_MAIN_READ;
                 else
                     F_next = S_MAIN_CALC;
@@ -224,7 +225,7 @@ module lab7(
     always @(posedge clk) begin
         case (F)
             S_MAIN_CALC_ADDR: begin
-                text_addr <= BODY_POS + 4 + pi * BASIC_BODY_LEN + pj * 7 + pk;
+                text_addr <= BODY_POS + 3 + pi * BASIC_BODY_LEN + pj * 7 + pk;
                 text_in <= user_data_out[pk*4 +: 4] + ((user_data_out[pk*4 +: 4] < 10) ? "0" : "A"-10);
             end
             S_MAIN_SHOW:
