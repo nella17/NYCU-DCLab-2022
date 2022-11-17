@@ -39,7 +39,7 @@ module sram #(
 );
 
     // Declareation of the memory cells
-    reg [DATA_WIDTH-1:0] RAM [RAM_SIZE-1:0];
+    (* ram_style="block" *) reg [DATA_WIDTH-1:0] RAM [RAM_SIZE-1:0];
 
     // ------------------------------------
     // SRAM cell initialization
