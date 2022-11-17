@@ -41,8 +41,8 @@ module lab7(
     localparam LF = "\x0A";
     localparam NULL = "\x00";
 
-    localparam HEAD_LEN = 41, HEAD_POS = 0;
-    localparam BASIC_BODY_LEN = 33, BODY_LEN = BASIC_BODY_LEN*4+1, BODY_POS = HEAD_POS + HEAD_LEN;
+    localparam HEAD_LEN = 40, HEAD_POS = 0;
+    localparam BASIC_BODY_LEN = 33, BODY_LEN = BASIC_BODY_LEN*4, BODY_POS = HEAD_POS + HEAD_LEN;
     localparam MEM_SIZE   = HEAD_LEN + BODY_LEN;
 
     reg [$clog2(MEM_SIZE)-1:0] send_counter = 0;
@@ -264,7 +264,7 @@ module lab7(
     always @(posedge clk) begin
         case (F)
             S_MAIN_CALC_ADDR: begin
-                text_addr <= BODY_POS + 3 + pi * BASIC_BODY_LEN + pj * 7 + pk;
+                text_addr <= BODY_POS + 2 + pi * BASIC_BODY_LEN + pj * 7 + pk;
                 text_in <= user_data_out[pk*4 +: 4] + ((user_data_out[pk*4 +: 4] < 10) ? "0" : "A"-10);
             end
             S_MAIN_SHOW:
