@@ -60,7 +60,8 @@ module lab7(
     wire print_enable, print_done;
 
     reg [17:0] num [0:1];
-    reg [17:0] sum, prod;
+    reg [17:0] prod;
+    reg [0:19] sum = 0;
     wire [7:0] num_low [0:1];
 
     reg [2:0] pn;
@@ -69,12 +70,10 @@ module lab7(
     reg [$clog2(M_SIZE):0] pk;
     wire calc_done;
 
-    reg [0:19] user_data_out = 0;
-
     wire sram_write;
     wire sram_enable;
     reg [10:0] sram_addr;
-    reg [17:0] sram_in;
+    wire [17:0] sram_in = 0;
     wire [17:0] sram_out;
 
     wire btn, btn_pressed;
@@ -118,7 +117,6 @@ module lab7(
                 end
                 S_MAIN_CALC: begin
                     pk <= 0;
-                    user_data_out <= sum;
                 end
                 S_MAIN_CALC_ADDR:
                     pk <= pk + 1;
@@ -226,7 +224,7 @@ module lab7(
         case (F)
             S_MAIN_CALC_ADDR: begin
                 text_addr <= BODY_POS + 3 + pi * BASIC_BODY_LEN + pj * 7 + pk;
-                text_in <= user_data_out[pk*4 +: 4] + ((user_data_out[pk*4 +: 4] < 10) ? "0" : "A"-10);
+                text_in <= sum[pk*4 +: 4] + ((sum[pk*4 +: 4] < 10) ? "0" : "A"-10);
             end
             S_MAIN_SHOW:
                 text_addr <= 0;
