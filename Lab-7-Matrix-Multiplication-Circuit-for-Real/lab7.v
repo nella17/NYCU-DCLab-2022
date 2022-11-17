@@ -41,16 +41,17 @@ module lab7(
     localparam LF = "\x0A";
     localparam NULL = "\x00";
 
-    localparam HEAD = "The matrix multiplication result is:";
     localparam HEAD_LEN = 41, HEAD_POS = 0;
-    localparam BODY = " [ ?????, ?????, ?????, ????? ]";
     localparam BASIC_BODY_LEN = 33, BODY_LEN = BASIC_BODY_LEN*4+1, BODY_POS = HEAD_POS + HEAD_LEN;
     localparam MEM_SIZE   = HEAD_LEN + BODY_LEN;
 
-    reg [$clog2(MEM_SIZE):0] send_counter = 0;
-    reg [7:0] data [0:MEM_SIZE-1];
-    reg [0:HEAD_LEN*8-1] head = { CRLF, HEAD, CRLF, NULL };
-    reg [0:BODY_LEN*8-1] body = { BODY, CRLF, BODY, CRLF, BODY, CRLF, BODY, CRLF, NULL };
+    reg [$clog2(MEM_SIZE)-1:0] send_counter = 0;
+
+    wire text_write;
+    wire text_enable;
+    reg [$clog2(MEM_SIZE)-1:0] text_addr;
+    reg [7:0] text_in;
+    wire [7:0] text_out;
 
     localparam [4:0] S_MAIN_WAIT = 0,
                      S_MAIN_READ = 1,
@@ -61,15 +62,18 @@ module lab7(
                      S_MAIN_SAVE = 6,
                      S_MAIN_SAVE_WAIT = 7,
                      S_MAIN_SAVE_INCR = 8,
-                     S_MAIN_SHOW = 9,
-                     S_MAIN_SHOW_HEAD = 10,
-                     S_MAIN_SHOW_LOAD = 11,
-                     S_MAIN_SHOW_WAIT = 12,
-                     S_MAIN_SHOW_SAVE = 13,
-                     S_MAIN_SHOW_CALC = 14,
-                     S_MAIN_SHOW_NEXT = 15,
-                     S_MAIN_SHOW_BODY = 16,
-                     S_MAIN_DONE = 17;
+                     S_MAIN_CALC_LOAD = 9,
+                     S_MAIN_CALC_WAIT = 10,
+                     S_MAIN_CALC_SAVE = 11,
+                     S_MAIN_CALC_ADDR = 12,
+                     S_MAIN_CALC_INCR = 13,
+                     S_MAIN_CALC_NEXT = 14,
+                     S_MAIN_SHOW = 15,
+                     S_MAIN_SHOW_WAIT = 16,
+                     S_MAIN_SHOW_SAVE = 17,
+                     S_MAIN_SHOW_TRAN = 18,
+                     S_MAIN_SHOW_NEXT = 19,
+                     S_MAIN_DONE = 20;
     reg [4:0] F, F_next;
     wire print_enable, print_done;
 
@@ -83,14 +87,12 @@ module lab7(
     reg [$clog2(M_SIZE):0] pk;
     wire calc_done;
 
-    reg [10:0] user_addr;
-    reg [17:0] user_data_in = 0;
     reg [0:19] user_data_out = 0;
 
     wire sram_write;
     wire sram_enable;
-    wire [10:0] sram_addr;
-    wire [17:0] sram_in;
+    reg [10:0] sram_addr;
+    reg [17:0] sram_in;
     wire [17:0] sram_out;
 
     wire btn, btn_pressed;
@@ -102,7 +104,8 @@ module lab7(
                      S_UART_INCR = 3;
     reg [1:0] U, U_next;
     wire transmit, received;
-    wire [7:0] rx_byte, tx_byte;
+    wire [7:0] rx_byte;
+    reg [7:0] tx_byte = NULL;
     wire is_receiving, is_transmitting, recv_error;
 
     // main
@@ -136,8 +139,12 @@ module lab7(
                     if (~calc_done)
                         pij <= pij + 1;
                 end
-                S_MAIN_SHOW_CALC: begin
-                    if (calc_done)
+                S_MAIN_CALC_SAVE:
+                    pk <= 0;
+                S_MAIN_CALC_ADDR:
+                    pk <= pk + 1;
+                S_MAIN_CALC_INCR: begin
+                    if (calc_done && pk == H_SIZE)
                         pij <= pij + 1;
                 end
                 default: ;
@@ -148,55 +155,30 @@ module lab7(
     // sram logic
     assign sram_enable = 1;
     assign sram_write = (F == S_MAIN_SAVE_WAIT);
-    assign sram_addr = user_addr;
-    assign sram_in = user_data_in;
     always @(posedge clk) begin
         if (~reset_n) begin
-            user_addr <= 0;
+            sram_addr <= 0;
         end else begin
             case (F)
                 S_MAIN_READ: begin
                     case (pn)
-                        0: user_addr <= (pn * M_SIZE * M_SIZE) | (pi) | (pk * M_SIZE);
-                        1: user_addr <= (pn * M_SIZE * M_SIZE) | (pk) | (pj * M_SIZE);
+                        0: sram_addr <= (pn * M_SIZE * M_SIZE) | (pi) | (pk * M_SIZE);
+                        1: sram_addr <= (pn * M_SIZE * M_SIZE) | (pk) | (pj * M_SIZE);
                         default: ;
                     endcase
                 end
-                // S_MAIN_READ_SAVE:
-                //     user_data_out <= sram_out;
                 S_MAIN_SAVE: begin
-                    user_addr <= (2 * M_SIZE * M_SIZE) | (pi) | (pj * M_SIZE);
-                    user_data_in <= sum;
+                    sram_addr <= (2 * M_SIZE * M_SIZE) | (pi) | (pj * M_SIZE);
+                    sram_in <= sum;
                 end
-                S_MAIN_SHOW_LOAD:
-                    user_addr <= (2 * M_SIZE * M_SIZE) | (pi) | (pj * M_SIZE);
-                S_MAIN_SHOW_SAVE:
+                S_MAIN_CALC_LOAD:
+                    sram_addr <= (2 * M_SIZE * M_SIZE) | (pi) | (pj * M_SIZE);
+                S_MAIN_CALC_SAVE:
                     user_data_out <= sram_out;
                 default: ;
             endcase
         end
     end
-
-    // uart display
-    reg [$clog2(MEM_SIZE):0] idx;
-    always @(posedge clk) begin
-        if (~reset_n) begin
-            `STRCPY(idx, HEAD_LEN, head, 0, data, HEAD_POS)
-            `STRCPY(idx, BODY_LEN, body, 0, data, BODY_POS)
-        end
-        else begin
-            case (F)
-                S_MAIN_SHOW_CALC: begin
-                    `N2T(idx, H_SIZE, user_data_out, data, BODY_POS + 3 + pi * BASIC_BODY_LEN + pj * (H_SIZE+2))
-                end
-                default: ;
-            endcase
-        end
-    end
-
-    assign print_enable = (F != S_MAIN_SHOW_HEAD && F_next == S_MAIN_SHOW_HEAD) ||
-                        (F != S_MAIN_SHOW_BODY && F_next == S_MAIN_SHOW_BODY);
-    assign print_done = tx_byte == NULL;
 
     always @(posedge clk) begin
         F <= ~reset_n ? S_MAIN_WAIT : F_next;
@@ -232,34 +214,43 @@ module lab7(
                 F_next = S_MAIN_SAVE_INCR;
             S_MAIN_SAVE_INCR:
                 if (calc_done)
-                    F_next = S_MAIN_SHOW;
+                    F_next = S_MAIN_CALC_LOAD;
                 else
                     F_next = S_MAIN_READ;
-            S_MAIN_SHOW:
-                F_next = S_MAIN_SHOW_HEAD;
-            S_MAIN_SHOW_HEAD:
-                if (print_done)
-                    F_next = S_MAIN_SHOW_LOAD;
+            S_MAIN_CALC_LOAD:
+                F_next = S_MAIN_CALC_WAIT;
+            S_MAIN_CALC_WAIT:
+                F_next = S_MAIN_CALC_SAVE;
+            S_MAIN_CALC_SAVE:
+                F_next = S_MAIN_CALC_ADDR;
+            S_MAIN_CALC_ADDR:
+                F_next = S_MAIN_CALC_INCR;
+            S_MAIN_CALC_INCR:
+                if (pk < H_SIZE)
+                    F_next = S_MAIN_CALC_ADDR;
                 else
-                    F_next = S_MAIN_SHOW_HEAD;
-            S_MAIN_SHOW_LOAD:
+                    F_next = S_MAIN_CALC_NEXT;
+            S_MAIN_CALC_NEXT:
+                if (calc_done)
+                    F_next = S_MAIN_CALC_LOAD;
+                else
+                    F_next = S_MAIN_SHOW;
+            S_MAIN_SHOW:
                 F_next = S_MAIN_SHOW_WAIT;
             S_MAIN_SHOW_WAIT:
                 F_next = S_MAIN_SHOW_SAVE;
             S_MAIN_SHOW_SAVE:
-                F_next = S_MAIN_SHOW_CALC;
-            S_MAIN_SHOW_CALC:
-                F_next = S_MAIN_SHOW_NEXT;
-            S_MAIN_SHOW_NEXT:
-                if (calc_done)
-                    F_next = S_MAIN_SHOW_LOAD;
-                else
-                    F_next = S_MAIN_SHOW_BODY;
-            S_MAIN_SHOW_BODY:
+                F_next = S_MAIN_SHOW_TRAN;
+            S_MAIN_SHOW_TRAN:
                 if (print_done)
-                    F_next = S_MAIN_DONE;
+                    F_next = S_MAIN_SHOW_NEXT;
                 else
-                    F_next = S_MAIN_SHOW_BODY;
+                    F_next = S_MAIN_SHOW_TRAN;
+            S_MAIN_SHOW_NEXT:
+                if (text_addr < MEM_SIZE-1)
+                    F_next = S_MAIN_SHOW_WAIT;
+                else
+                    F_next = S_MAIN_DONE;
             S_MAIN_DONE:
                 F_next = S_MAIN_DONE;
             default:
@@ -267,19 +258,40 @@ module lab7(
         endcase
     end
 
+    // text - uart display
+    assign text_write = F == S_MAIN_CALC_INCR;
+    assign text_enable = 1;
     always @(posedge clk) begin
-        if (F != S_MAIN_SHOW_HEAD && F_next == S_MAIN_SHOW_HEAD)
-            send_counter <= HEAD_POS;
-        else if (F != S_MAIN_SHOW_BODY && F_next == S_MAIN_SHOW_BODY)
-            send_counter <= BODY_POS;
-        else
-            send_counter <= send_counter + (U_next == S_UART_INCR);
+        case (F)
+            S_MAIN_CALC_ADDR: begin
+                text_addr <= BODY_POS + 3 + pi * BASIC_BODY_LEN + pj * 7 + pk;
+                text_in <= user_data_out[pk*4 +: 4] + ((user_data_out[pk*4 +: 4] < 10) ? "0" : "A"-10);
+            end
+            S_MAIN_SHOW:
+                text_addr <= 0;
+            S_MAIN_SHOW_NEXT:
+                text_addr <= text_addr + 1;
+        endcase
+    end
+
+    assign print_enable = (F != S_MAIN_SHOW_TRAN && F_next == S_MAIN_SHOW_TRAN);
+    assign print_done = U == S_UART_INCR;
+    assign transmit = (U_next == S_UART_WAIT) || print_enable;
+    always @(posedge clk) begin
+        if (~reset_n)
+            tx_byte <= NULL;
+        else if (F == S_MAIN_SHOW_SAVE)
+            tx_byte <= text_out;
     end
 
     // sram
-    sram #(.DATA_WIDTH(18)) sram(
+    sram #(.DATA_WIDTH(18)) sram_data(
         .clk(clk), .we(sram_write), .en(sram_enable),
         .addr(sram_addr), .data_i(sram_in), .data_o(sram_out)
+    );
+    sram #(.DATA_WIDTH(8), .ADDR_WIDTH($clog2(MEM_SIZE)), .RAM_SIZE(MEM_SIZE), .INIT_MEM("text.mem")) sram_text(
+        .clk(clk), .we(text_write), .en(text_enable),
+        .addr(text_addr), .data_i(text_in), .data_o(text_out)
     );
 
     // LED
@@ -334,9 +346,6 @@ module lab7(
         .recv_error(recv_error)
     );
 
-    assign transmit = (U_next == S_UART_WAIT) || print_enable;
-    assign tx_byte = data[send_counter];
-
     always @(posedge clk) begin
         U <= ~reset_n ? S_UART_IDLE : U_next;
     end
@@ -359,10 +368,7 @@ module lab7(
                 else
                     U_next = S_UART_SEND;
             S_UART_INCR:
-                if (print_done)
-                    U_next = S_UART_IDLE;
-                else
-                    U_next = S_UART_WAIT;
+                U_next = S_UART_IDLE;
             default:
                 U_next = S_UART_IDLE;
         endcase
