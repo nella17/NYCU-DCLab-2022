@@ -44,7 +44,6 @@ module lab7(
                      S_MAIN_READ = 1,
                      S_MAIN_READ_WAIT = 2,
                      S_MAIN_READ_SAVE = 3,
-                     S_MAIN_MULT = 4,
                      S_MAIN_ADDI = 5,
                      S_MAIN_CALC = 6,
                      S_MAIN_CALC_ADDR = 7,
@@ -60,8 +59,8 @@ module lab7(
     wire print_enable, print_done;
 
     reg [17:0] num [0:1];
-    reg [17:0] prod;
     reg [0:19] sum = 0;
+    wire [17:0] prod;
     wire [7:0] num_low [0:1];
 
     reg [2:0] pn;
@@ -90,6 +89,7 @@ module lab7(
     wire is_receiving, is_transmitting, recv_error;
 
     // main
+    assign prod = num_low[0] * num_low[1];
     assign num_low[0] = num[0][7:0];
     assign num_low[1] = num[1][7:0];
 
@@ -106,9 +106,6 @@ module lab7(
                 S_MAIN_READ_SAVE: begin
                     num[pn] <= sram_out;
                     pn <= pn + 1;
-                end
-                S_MAIN_MULT: begin
-                    prod <= num_low[0] * num_low[1];
                 end
                 S_MAIN_ADDI: begin
                     sum <= sum + prod;
@@ -172,9 +169,7 @@ module lab7(
                 if (pn < 2)
                     F_next = S_MAIN_READ;
                 else
-                    F_next = S_MAIN_MULT;
-            S_MAIN_MULT:
-                F_next = S_MAIN_ADDI;
+                    F_next = S_MAIN_ADDI;
             S_MAIN_ADDI:
                 if (pk < M_SIZE-1)
                     F_next = S_MAIN_READ;
