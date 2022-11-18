@@ -59,10 +59,9 @@ module lab7(
     reg [3:0] F, F_next;
     wire print_enable, print_done;
 
-    reg [17:0] num [0:1];
+    reg [7:0] num [0:1];
     reg [17:0] prod;
     reg [0:19] sum = 0;
-    wire [7:0] num_low [0:1];
 
     reg [2:0] pn;
     reg [$clog2(M_SIZE)*2:0] pij;
@@ -90,8 +89,6 @@ module lab7(
     wire is_receiving, is_transmitting, recv_error;
 
     // main
-    assign num_low[0] = num[0][7:0];
-    assign num_low[1] = num[1][7:0];
 
     // matrix logic
     assign pi = pij[$clog2(M_SIZE)*2-1:$clog2(M_SIZE)*1];
@@ -104,11 +101,11 @@ module lab7(
         end else begin
             case (F)
                 S_MAIN_READ_SAVE: begin
-                    num[pn] <= sram_out;
+                    num[pn] <= sram_out[7:0];
                     pn <= pn + 1;
                 end
                 S_MAIN_MULT: begin
-                    prod <= num_low[0] * num_low[1];
+                    prod <= num[0] * num[1];
                 end
                 S_MAIN_ADDI: begin
                     sum <= sum + prod;
