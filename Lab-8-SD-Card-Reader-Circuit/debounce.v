@@ -1,36 +1,28 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: Dept. of Computer Science, National Chiao Tung University
-// Engineer: Chun-Jen Tsai
-// 
-// Create Date:    09:43:16 10/20/2015 
-// Design Name: 
-// Module Name:    debounce
-// Project Name: 
-// Target Devices: 
-// Tool versions: 
-// Description: 
-//
-// Dependencies: 
-//
-// Revision: 
-// Revision 0.01 - File Created
-// Additional Comments: 
-//
-//////////////////////////////////////////////////////////////////////////////////
-module debounce(input clk, input btn_input, output btn_output);
-
-parameter DEBOUNCE_PERIOD = 2_000_000; /* 20 msec = (100,000,000*0.2) ticks @100MHz */
-
-reg [$clog2(DEBOUNCE_PERIOD):0] counter;
-
-assign btn_output = (counter == DEBOUNCE_PERIOD);
-
-always@(posedge clk) begin
-  if (btn_input == 0)
-    counter <= 0;
-  else
-    counter <= counter + (counter != DEBOUNCE_PERIOD);
-end
-
+module debounce #(
+    parameter CNT = 10
+)(
+    input  clk,
+    input  reset_n,
+    input  in,
+    output reg out
+);
+    reg init = 0, stat;
+    reg [$clog2(CNT):0] cnt;
+    always @(posedge clk) begin
+        if (~reset_n) begin
+            init <= 0;
+        end else begin
+            if (init == 0 || stat !== in) begin
+                init <= 1;
+                stat <= in;
+                cnt <= 0;
+            end else if (stat !== out) begin
+                if (cnt < CNT)
+                    cnt <= cnt+1;
+                else
+                    out <= stat;
+            end
+        end
+    end
 endmodule
