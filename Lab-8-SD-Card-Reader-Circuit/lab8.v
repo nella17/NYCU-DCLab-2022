@@ -1,3 +1,7 @@
+`define N2T(i, bits, in, out, off) \
+    for(i = 0; i < bits; i = i+1) \
+        out[off+i] <= in[i*4 +: 4] + ((in[i*4 +: 4] < 10) ? "0" : "A"-10);
+
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
 // Company: Dept. of Computer Science, National Chiao Tung University
@@ -50,22 +54,46 @@ module lab8(
     output [3:0] LCD_D
 );
 
-    localparam [2:0] S_MAIN_INIT = 3'b000, S_MAIN_IDLE = 3'b001,
-                     S_MAIN_WAIT = 3'b010, S_MAIN_READ = 3'b011,
-                     S_MAIN_DONE = 3'b100, S_MAIN_SHOW = 3'b101;
+    localparam [3:0] S_MAIN_INIT = 0,
+                     S_MAIN_IDLE = 1,
+                     S_MAIN_WAIT = 2,
+                     S_MAIN_READ = 3,
+                     S_MAIN_CLER = 4,
+                     S_MAIN_LOAD = 5,
+                     S_MAIN_CALC = 6,
+                     S_MAIN_INCR = 7,
+                     S_MAIN_NEXT = 8,
+                     S_MAIN_DONE = 9;
+
+    localparam LF = "\x0A";
+    localparam BEGIN = "DLAB_TAG\x0A";
+    localparam END = "DLAB_END\x0A";
+    localparam TARGET_SIZE = 3;
+
+    localparam row_A_init = "SD card cannot  ";
+    localparam row_B_init = "be initialized! ";
+    localparam row_A_idle = "Hit BTN2 to read";
+    localparam row_B_idle = "the SD card ... ";
+    localparam row_A_done = "Found ???? words";
+    localparam row_B_done = "in the text file";
 
     // Declare system variables
     wire btn_level, btn_pressed;
     reg  prev_btn_level;
-    reg  [5:0] send_counter;
-    reg  [2:0] P, P_next;
-    reg  [9:0] sd_counter;
-    reg  [7:0] data_byte;
-    reg  [31:0] blk_addr;
 
-    reg  [127:0] row_A = "SD card cannot  ";
-    reg  [127:0] row_B = "be initialized! ";
-    reg  done_flag; // Signals the completion of reading one SD sector.
+    reg  [3:0] P, P_next;
+    reg  [127:0] row_A = row_A_init;
+    reg  [127:0] row_B = row_B_init;
+
+    reg [3:0] begin_idx, end_idx;
+    wire is_begin, is_end;
+    wire isLF, isLetter;
+    reg  [0:16] word_counter;
+    reg  [10:0] word_size;
+    reg  [7:0] data_byte;
+
+    reg  [9:0] sd_counter;
+    reg  [31:0] blk_addr;
 
     // Declare SD card interface signals
     wire clk_sel;
@@ -93,8 +121,9 @@ module lab8(
 
     debounce btn_db0(
         .clk(clk),
-        .btn_input(usr_btn[2]),
-        .btn_output(btn_level)
+        .reset_n(reset_n),
+        .in(usr_btn[2]),
+        .out(btn_level)
     );
 
     LCD_module lcd0( 
@@ -162,15 +191,8 @@ module lab8(
     always @(posedge clk) begin
         if (~reset_n) begin
             P <= S_MAIN_INIT;
-            done_flag <= 0;
         end else begin
             P <= P_next;
-            if (P == S_MAIN_DONE)
-                done_flag <= 1;
-            else if (P == S_MAIN_SHOW && P_next == S_MAIN_IDLE)
-                done_flag <= 0;
-            else
-                done_flag <= done_flag;
         end
     end
 
@@ -190,19 +212,27 @@ module lab8(
             P_next = S_MAIN_READ;
         S_MAIN_READ: // wait for the input data to enter the SRAM buffer
             if (sd_counter == 512)
-                P_next = S_MAIN_DONE;
+                P_next = S_MAIN_CLER;
             else
                 P_next = S_MAIN_READ;
-        S_MAIN_DONE: // read byte 0 of the superblock from sram[]
-            if (btn_pressed == 1)
-                P_next = S_MAIN_SHOW;
+        S_MAIN_CLER:
+            P_next = S_MAIN_LOAD;
+        S_MAIN_LOAD:
+            P_next = S_MAIN_CALC;
+        S_MAIN_CALC:
+            P_next = S_MAIN_INCR;
+        S_MAIN_INCR:
+            if (sd_counter == 512)
+                P_next = S_MAIN_NEXT;
             else
-                P_next = S_MAIN_DONE;
-        S_MAIN_SHOW:
-            if (sd_counter < 512)
+                P_next = S_MAIN_CALC;
+        S_MAIN_NEXT:
+            if (is_end)
                 P_next = S_MAIN_DONE;
             else
-                P_next = S_MAIN_IDLE;
+                P_next = S_MAIN_WAIT;
+        S_MAIN_DONE:
+            P_next = S_MAIN_DONE;
         default:
             P_next = S_MAIN_IDLE;
         endcase
@@ -224,40 +254,59 @@ module lab8(
     // FSM output logic: controls the 'sd_counter' signal.
     // SD card read address incrementer
     always @(posedge clk) begin
-        if (~reset_n || (P == S_MAIN_READ && P_next == S_MAIN_DONE))
+        if (~reset_n || (P == S_MAIN_CLER) || (P == S_MAIN_NEXT))
             sd_counter <= 0;
-        else if ((P == S_MAIN_READ && sd_valid) || (P == S_MAIN_DONE && P_next == S_MAIN_SHOW))
+        else if ((P == S_MAIN_READ && sd_valid) || (P == S_MAIN_CALC))
             sd_counter <= sd_counter + 1;
     end
 
-    // FSM ouput logic: Retrieves the content of sram[] for display
+    assign is_begin = BEGIN[begin_idx] == LF;
     always @(posedge clk) begin
-        if (~reset_n)
-            data_byte <= 8'b0;
-        else if (sram_en && P == S_MAIN_DONE)
-            data_byte <= data_out;
+        if (~reset_n || (P == S_MAIN_IDLE))
+            begin_idx <= 0;
+        else if (~is_begin && data_byte == BEGIN[begin_idx])
+            begin_idx <= begin_idx + 1;
     end
-    // End of the FSM of the SD card reader
-    // ------------------------------------------------------------------------
+
+    assign is_end = END[end_idx] == LF;
+    always @(posedge clk) begin
+        if (~reset_n || (P == S_MAIN_IDLE))
+            end_idx <= 0;
+        else if (~is_end && data_byte == END[end_idx])
+            end_idx <= end_idx + 1;
+    end
+
+    assign isLF = data_byte == LF;
+    assign isLetter = ("A" <= data_byte && data_byte <= "Z") ||
+                ("a" <= data_byte && data_byte <= "z") || (data_byte == "_");
+    always @(posedge clk) begin
+        if (~reset_n || (P == S_MAIN_IDLE))
+            word_size <= 0;
+        else if (is_begin && ~is_end && P == S_MAIN_CALC)
+            word_size <= ~isLetter ? 0 : word_size + 1;
+    end
+    always @(posedge clk) begin
+        if (~reset_n || (P == S_MAIN_IDLE))
+            word_counter <= 0;
+        else if (is_begin && ~is_end && P == S_MAIN_INCR && ~isLetter && word_size == TARGET_SIZE)
+            word_counter <= word_counter + 1;
+    end
 
     // ------------------------------------------------------------------------
     // LCD Display function.
+    reg [2:0] i;
     always @(posedge clk) begin
         if (~reset_n) begin
-            row_A = "SD card cannot  ";
-            row_B = "be initialized! ";
-        end else if (done_flag) begin
-            row_A <= "SD block 8192:  ";
-            row_B <= { "Byte ",
-            sd_counter[9:8] + "0",
-            ((sd_counter[7:4] > 9)? "7" : "0") + sd_counter[7:4],
-            ((sd_counter[3:0] > 9)? "7" : "0") + sd_counter[3:0],
-            "h = ",
-            ((data_byte[7:4] > 9)? "7" : "0") + data_byte[7:4],
-            ((data_byte[3:0] > 9)? "7" : "0") + data_byte[3:0], "h." };
+            row_A <= row_A_init;
+            row_B <= row_B_init;
         end else if (P == S_MAIN_IDLE) begin
-            row_A <= "Hit BTN2 to read";
-            row_B <= "the SD card ... ";
+            row_A <= row_A_idle;
+            row_B <= row_B_idle;
+        end else if (P != S_MAIN_DONE) begin
+            row_A <= row_A_done;
+            row_B <= row_B_done;
+        end else begin
+            `N2T(i, 4, word_counter, row_A, 6)
         end
     end
     // End of the LCD display function
