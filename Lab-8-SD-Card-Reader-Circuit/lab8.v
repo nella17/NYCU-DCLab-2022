@@ -331,7 +331,7 @@ module lab8(
     always @(posedge clk) begin
         if (~reset_n || (P == S_MAIN_IDLE))
             word_counter <= 0;
-        else if (P == S_MAIN_INCR)
+        else if (P == S_MAIN_CALC)
             if (is_during && ~isLetter && word_size == TARGET_SIZE)
                 word_counter <= word_counter + 1;
     end
