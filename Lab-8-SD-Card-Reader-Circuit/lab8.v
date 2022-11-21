@@ -78,8 +78,8 @@ module lab8(
 
     reg [0:9*8-1] dlab_begin_raw = DLAB_BEGIN;
     reg [0:9*8-1] dlab_end_raw = DLAB_END;
-    reg [7:0] dlab_begin [3:0];
-    reg [7:0] dlab_end [3:0];
+    reg [7:0] dlab_begin [0:9];
+    reg [7:0] dlab_end [0:9];
 
     reg [3:0] idx;
     always @(posedge clk) begin
