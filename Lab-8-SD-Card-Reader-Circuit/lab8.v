@@ -246,9 +246,6 @@ module lab8(
         S_MAIN_LOAD:
             P_next = S_MAIN_STOR;
         S_MAIN_STOR:
-            if (is_during && sd_counter >= debug_idx)
-                P_next = S_MAIN_STOR;
-            else
             P_next = S_MAIN_CALC;
         S_MAIN_CALC:
             P_next = S_MAIN_INCR;
