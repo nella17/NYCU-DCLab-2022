@@ -94,7 +94,7 @@ module lab8(
     localparam row_A_idle = "Hit BTN2 to read";
     localparam row_B_idle = "the SD card ... ";
     localparam row_A_sear = "Search DLAB_TAG ";
-    localparam row_A_cont = "Count word size";
+    localparam row_A_cont = "Count word size ";
     localparam row_A_done = "Found ???? words";
     localparam row_B_done = "in the text file";
 
@@ -366,7 +366,7 @@ module lab8(
             // `N2T(i, 1, begin_idx, row_B, 13)
             // `N2T(i, 2, dlab_begin[begin_idx], row_B, 14)
         end else begin
-            `N2T(i, 4, word_counter, row_A, 7)
+            `N2T(i, 4, word_counter, row_A, 6)
         end
     end
     // End of the LCD display function
