@@ -57,6 +57,8 @@ module lab8(
     output [3:0] LCD_D
 );
 
+    genvar gi;
+
     localparam [3:0] S_MAIN_INIT = 0,
                      S_MAIN_IDLE = 1,
                      S_MAIN_WAIT = 2,
@@ -97,8 +99,8 @@ module lab8(
     localparam row_B_done = "in the text file";
 
     // Declare system variables
-    wire btn_level, btn_pressed;
-    reg  prev_btn_level;
+    wire [3:0] btn, btn_pressed;
+    reg  [3:0] prev_btn;
 
     reg  [3:0] P, P_next;
     reg  [127:0] row_A = row_A_init;
@@ -138,12 +140,9 @@ module lab8(
         .clk_out(clk_500k)
     );
 
-    debounce btn_db0(
-        .clk(clk),
-        .reset_n(reset_n),
-        .in(usr_btn[2]),
-        .out(btn_level)
-    );
+    generate for(gi = 0; gi < 4; gi = gi+1) begin
+        debounce db_btn(.clk(clk), .reset_n(reset_n), .in(usr_btn[gi]), .out(btn[gi]));
+    end endgenerate
 
     LCD_module lcd0( 
         .clk(clk),
@@ -185,12 +184,12 @@ module lab8(
     //
     always @(posedge clk) begin
         if (~reset_n)
-            prev_btn_level <= 0;
+            prev_btn <= 0;
         else
-            prev_btn_level <= btn_level;
+            prev_btn <= btn;
     end
+    assign btn_pressed = ~prev_btn & btn;
 
-    assign btn_pressed = btn_level == 1 && prev_btn_level == 0;
 
     // ------------------------------------------------------------------------
     // The following code sets the control signals of an SRAM memory block
@@ -223,7 +222,7 @@ module lab8(
             else
                 P_next = S_MAIN_INIT;
         S_MAIN_IDLE: // wait for button click
-            if (btn_pressed == 1)
+            if (btn_pressed[2] == 1)
                 P_next = S_MAIN_WAIT;
             else
                 P_next = S_MAIN_IDLE;
