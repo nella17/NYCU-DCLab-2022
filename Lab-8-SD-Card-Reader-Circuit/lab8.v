@@ -246,7 +246,7 @@ module lab8(
         S_MAIN_LOAD:
             P_next = S_MAIN_STOR;
         S_MAIN_STOR:
-            if (begin_idx >= debug_idx)
+            if (is_during && sd_counter >= debug_idx)
                 P_next = S_MAIN_STOR;
             else
             P_next = S_MAIN_CALC;
@@ -359,12 +359,12 @@ module lab8(
             row_B[7*8 +: 8] <= " ";
             `N2T(i, 2, data_byte, row_B, 8)
             row_B[10*8 +: 8] <= " ";
-            // `N2T(i, 2, word_size, row_B, 11)
-            // row_B[13*8 +: 8] <= " ";
-            // `N2T(i, 2, word_counter, row_B, 14)
-            `N2T(i, 2, dlab_begin[debug_idx], row_B, 11)
-            `N2T(i, 1, begin_idx, row_B, 13)
-            `N2T(i, 2, dlab_begin[begin_idx], row_B, 14)
+            `N2T(i, 2, word_size, row_B, 11)
+            row_B[13*8 +: 8] <= " ";
+            `N2T(i, 2, word_counter, row_B, 14)
+            // `N2T(i, 2, dlab_begin[debug_idx], row_B, 11)
+            // `N2T(i, 1, begin_idx, row_B, 13)
+            // `N2T(i, 2, dlab_begin[begin_idx], row_B, 14)
         end else begin
             `N2T(i, 4, word_counter, row_A, 7)
         end
