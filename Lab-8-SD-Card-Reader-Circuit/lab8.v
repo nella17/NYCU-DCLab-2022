@@ -60,10 +60,11 @@ module lab8(
                      S_MAIN_READ = 3,
                      S_MAIN_CLER = 4,
                      S_MAIN_LOAD = 5,
-                     S_MAIN_CALC = 6,
-                     S_MAIN_INCR = 7,
-                     S_MAIN_NEXT = 8,
-                     S_MAIN_DONE = 9;
+                     S_MAIN_STOR = 6,
+                     S_MAIN_CALC = 7,
+                     S_MAIN_INCR = 8,
+                     S_MAIN_NEXT = 9,
+                     S_MAIN_DONE = 10;
 
     localparam LF = "\x0A";
     localparam BEGIN = "DLAB_TAG\x0A";
@@ -218,6 +219,8 @@ module lab8(
         S_MAIN_CLER:
             P_next = S_MAIN_LOAD;
         S_MAIN_LOAD:
+            P_next = S_MAIN_STOR;
+        S_MAIN_STOR:
             P_next = S_MAIN_CALC;
         S_MAIN_CALC:
             P_next = S_MAIN_INCR;
@@ -225,7 +228,7 @@ module lab8(
             if (sd_counter == 512)
                 P_next = S_MAIN_NEXT;
             else
-                P_next = S_MAIN_CALC;
+                P_next = S_MAIN_LOAD;
         S_MAIN_NEXT:
             if (is_end)
                 P_next = S_MAIN_DONE;
