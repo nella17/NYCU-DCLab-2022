@@ -287,7 +287,7 @@ module lab8(
     always @(posedge clk) begin
         if (~reset_n || (P == S_MAIN_CLER) || (P == S_MAIN_NEXT))
             sd_counter <= 0;
-        else if ((P == S_MAIN_READ && sd_valid) || (P == S_MAIN_CALC))
+        else if ((P == S_MAIN_READ && sd_valid) || (P == S_MAIN_CALC) || btn_pressed[0])
             sd_counter <= sd_counter + 1;
     end
 
@@ -359,9 +359,12 @@ module lab8(
             row_B[7*8 +: 8] <= " ";
             `N2T(i, 2, data_byte, row_B, 8)
             row_B[10*8 +: 8] <= " ";
-            `N2T(i, 2, word_size, row_B, 11)
-            row_B[13*8 +: 8] <= " ";
-            `N2T(i, 2, word_counter, row_B, 14)
+            // `N2T(i, 2, word_size, row_B, 11)
+            // row_B[13*8 +: 8] <= " ";
+            // `N2T(i, 2, word_counter, row_B, 14)
+            `N2T(i, 2, dlab_begin[debug_idx], row_B, 11)
+            `N2T(i, 1, begin_idx, row_B, 13)
+            `N2T(i, 2, dlab_begin[begin_idx], row_B, 14)
         end else begin
             `N2T(i, 4, word_counter, row_A, 7)
         end
