@@ -364,6 +364,7 @@ module lab8(
             // `N2T(i, 2, dlab_begin[begin_idx], row_B, 14)
         end else begin
             `N2T(i, 4, word_counter, row_A, 6)
+            row_B <= row_B_done;
         end
     end
     // End of the LCD display function
