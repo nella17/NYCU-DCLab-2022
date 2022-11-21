@@ -91,6 +91,8 @@ module lab8(
     localparam row_B_init = "be initialized! ";
     localparam row_A_idle = "Hit BTN2 to read";
     localparam row_B_idle = "the SD card ... ";
+    localparam row_A_sear = "Search DLAB_TAG ";
+    localparam row_A_cont = "Count word size";
     localparam row_A_done = "Found ???? words";
     localparam row_B_done = "in the text file";
 
@@ -331,8 +333,21 @@ module lab8(
             row_A <= row_A_idle;
             row_B <= row_B_idle;
         end else if (P != S_MAIN_DONE) begin
-            row_A <= row_A_done;
-            row_B <= row_B_done;
+            if (~is_begin)
+                row_A <= row_A_sear;
+            else if (~is_end)
+                row_A <= row_A_cont;
+            else
+                row_A <= row_A_done;
+            `N2T(i, 4, blk_addr, row_B, 0)
+            row_B[4*8 +: 8] <= " ";
+            `N2T(i, 2, sd_counter, row_B, 5)
+            row_B[7*8 +: 8] <= " ";
+            `N2T(i, 2, data_byte, row_B, 8)
+            row_B[10*8 +: 8] <= " ";
+            `N2T(i, 2, word_size, row_B, 11)
+            row_B[13*8 +: 8] <= " ";
+            `N2T(i, 2, word_counter, row_B, 14)
         end else begin
             `N2T(i, 4, word_counter, row_A, 6)
         end
