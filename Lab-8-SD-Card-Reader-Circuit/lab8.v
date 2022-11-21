@@ -113,6 +113,8 @@ module lab8(
     reg  [10:0] word_size;
     reg  [7:0] data_byte;
 
+    reg [3:0] debug_idx = 0;
+
     reg  [9:0] sd_counter;
     reg  [31:0] blk_addr;
 
@@ -190,6 +192,12 @@ module lab8(
     end
     assign btn_pressed = ~prev_btn & btn;
 
+    always @(posedge clk) begin
+        if (~reset_n)
+            debug_idx <= 0;
+        else
+            debug_idx <= debug_idx + btn_pressed[3];
+    end
 
     // ------------------------------------------------------------------------
     // The following code sets the control signals of an SRAM memory block
@@ -238,6 +246,9 @@ module lab8(
         S_MAIN_LOAD:
             P_next = S_MAIN_STOR;
         S_MAIN_STOR:
+            if (begin_idx >= debug_idx)
+                P_next = S_MAIN_STOR;
+            else
             P_next = S_MAIN_CALC;
         S_MAIN_CALC:
             P_next = S_MAIN_INCR;
