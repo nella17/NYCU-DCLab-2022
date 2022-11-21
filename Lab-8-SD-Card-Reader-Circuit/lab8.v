@@ -105,7 +105,7 @@ module lab8(
     reg  [127:0] row_B = row_B_init;
 
     reg [3:0] begin_idx, end_idx;
-    wire is_begin, is_end;
+    wire is_begin, is_end, is_during;
     wire isLF, isLetter;
     reg  [15:0] word_counter;
     reg  [10:0] word_size;
@@ -306,6 +306,8 @@ module lab8(
                 end_idx <= data_byte != dlab_end[end_idx] ? 0 : end_idx + 1;
     end
 
+    assign is_during = is_begin && ~is_end;
+
     assign isLF = data_byte == LF;
     assign isLetter = ("A" <= data_byte && data_byte <= "Z") ||
                 ("a" <= data_byte && data_byte <= "z") || (data_byte == "_");
@@ -313,14 +315,14 @@ module lab8(
         if (~reset_n || (P == S_MAIN_IDLE))
             word_size <= 0;
         else if (P == S_MAIN_CALC)
-            if (is_begin && ~is_end)
+            if (is_during)
                 word_size <= ~isLetter ? 0 : word_size + 1;
     end
     always @(posedge clk) begin
         if (~reset_n || (P == S_MAIN_IDLE))
             word_counter <= 0;
-        else if (P == S_MAIN_CALC)
-            if (is_begin && ~is_end && P == S_MAIN_INCR && ~isLetter && word_size == TARGET_SIZE)
+        else if (P == S_MAIN_INCR)
+            if (is_during && ~isLetter && word_size == TARGET_SIZE)
                 word_counter <= word_counter + 1;
     end
 
