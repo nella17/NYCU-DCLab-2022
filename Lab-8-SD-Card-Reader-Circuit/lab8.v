@@ -107,7 +107,7 @@ module lab8(
     reg [3:0] begin_idx, end_idx;
     wire is_begin, is_end;
     wire isLF, isLetter;
-    reg  [0:16] word_counter;
+    reg  [15:0] word_counter;
     reg  [10:0] word_size;
     reg  [7:0] data_byte;
 
@@ -190,7 +190,7 @@ module lab8(
             prev_btn_level <= btn_level;
     end
 
-    assign btn_pressed = (btn_level == 1 && prev_btn_level == 0)? 1 : 0;
+    assign btn_pressed = btn_level == 1 && prev_btn_level == 0;
 
     // ------------------------------------------------------------------------
     // The following code sets the control signals of an SRAM memory block
@@ -267,9 +267,9 @@ module lab8(
 
     always @(posedge clk) begin
         if (~reset_n)
-            blk_addr <= 32'h2000;
-        else
-            blk_addr <= blk_addr; // In lab 6, change this line to scan all blocks
+            blk_addr <= 0;
+        else if (P == S_MAIN_NEXT)
+            blk_addr <= blk_addr + 1;
     end
 
     // FSM output logic: controls the 'sd_counter' signal.
@@ -312,14 +312,16 @@ module lab8(
     always @(posedge clk) begin
         if (~reset_n || (P == S_MAIN_IDLE))
             word_size <= 0;
-        else if (is_begin && ~is_end && P == S_MAIN_CALC)
-            word_size <= ~isLetter ? 0 : word_size + 1;
+        else if (P == S_MAIN_CALC)
+            if (is_begin && ~is_end)
+                word_size <= ~isLetter ? 0 : word_size + 1;
     end
     always @(posedge clk) begin
         if (~reset_n || (P == S_MAIN_IDLE))
             word_counter <= 0;
-        else if (is_begin && ~is_end && P == S_MAIN_INCR && ~isLetter && word_size == TARGET_SIZE)
-            word_counter <= word_counter + 1;
+        else if (P == S_MAIN_CALC)
+            if (is_begin && ~is_end && P == S_MAIN_INCR && ~isLetter && word_size == TARGET_SIZE)
+                word_counter <= word_counter + 1;
     end
 
     // ------------------------------------------------------------------------
@@ -349,7 +351,7 @@ module lab8(
             row_B[13*8 +: 8] <= " ";
             `N2T(i, 2, word_counter, row_B, 14)
         end else begin
-            `N2T(i, 4, word_counter, row_A, 6)
+            `N2T(i, 4, word_counter, row_A, 7)
         end
     end
     // End of the LCD display function
