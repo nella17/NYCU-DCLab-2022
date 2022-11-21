@@ -328,7 +328,7 @@ module lab8(
     // LCD Display function.
     reg [2:0] i;
     always @(posedge clk) begin
-        if (~reset_n) begin
+        if (~reset_n || (P == S_MAIN_INIT)) begin
             row_A <= row_A_init;
             row_B <= row_B_init;
         end else if (P == S_MAIN_IDLE) begin
