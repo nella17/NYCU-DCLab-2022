@@ -1,6 +1,9 @@
+`define STRCPY(i, size, in, of, out, off) \
+    for(i = 0; i < size; i = i+1) \
+        out[off+i] <= in[(i+of)*8 +: 8];
 `define N2T(i, bits, in, out, off) \
     for(i = 0; i < bits; i = i+1) \
-        out[off+i] <= in[i*4 +: 4] + ((in[i*4 +: 4] < 10) ? "0" : "A"-10);
+        out[8*(off+i) +: 8] <= in[i*4 +: 4] + ((in[i*4 +: 4] < 10) ? "0" : "A"-10);
 
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
@@ -67,9 +70,22 @@ module lab8(
                      S_MAIN_DONE = 10;
 
     localparam LF = "\x0A";
-    localparam BEGIN = "DLAB_TAG\x0A";
-    localparam END = "DLAB_END\x0A";
+    localparam DLAB_BEGIN = "DLAB_TAG\x0A";
+    localparam DLAB_END = "DLAB_END\x0A";
     localparam TARGET_SIZE = 3;
+
+    reg [0:9*8-1] dlab_begin_raw = DLAB_BEGIN;
+    reg [0:9*8-1] dlab_end_raw = DLAB_END;
+    reg [7:0] dlab_begin [3:0];
+    reg [7:0] dlab_end [3:0];
+
+    reg [3:0] idx;
+    always @(posedge clk) begin
+        if (~reset_n) begin
+            `STRCPY(idx, 9, dlab_begin_raw, 0, dlab_begin, 0)
+            `STRCPY(idx, 9, dlab_end_raw  , 0, dlab_end  , 0)
+        end
+    end
 
     localparam row_A_init = "SD card cannot  ";
     localparam row_B_init = "be initialized! ";
@@ -263,20 +279,29 @@ module lab8(
             sd_counter <= sd_counter + 1;
     end
 
-    assign is_begin = BEGIN[begin_idx] == LF;
+    always @(posedge clk) begin
+        if (~reset_n || (P == S_MAIN_IDLE))
+            data_byte <= 0;
+        else if (P == S_MAIN_STOR)
+            data_byte <= data_out;
+    end
+
+    assign is_begin = dlab_begin[begin_idx] == LF;
     always @(posedge clk) begin
         if (~reset_n || (P == S_MAIN_IDLE))
             begin_idx <= 0;
-        else if (~is_begin && data_byte == BEGIN[begin_idx])
-            begin_idx <= begin_idx + 1;
+        else if (P == S_MAIN_CALC)
+            if (~is_begin)
+                begin_idx <= data_byte != dlab_begin[begin_idx] ? 0 : begin_idx + 1;
     end
 
-    assign is_end = END[end_idx] == LF;
+    assign is_end = dlab_end[end_idx] == LF;
     always @(posedge clk) begin
         if (~reset_n || (P == S_MAIN_IDLE))
             end_idx <= 0;
-        else if (~is_end && data_byte == END[end_idx])
-            end_idx <= end_idx + 1;
+        else if (P == S_MAIN_CALC)
+            if (~is_end)
+                end_idx <= data_byte != dlab_end[end_idx] ? 0 : end_idx + 1;
     end
 
     assign isLF = data_byte == LF;
