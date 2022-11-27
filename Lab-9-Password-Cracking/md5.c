@@ -46,10 +46,9 @@ uint32_t k[] = {
     0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
 };
 
-void md5(uint8_t *initial_msg, size_t initial_len, uint8_t *hash)
+void md5_8(char *initial_msg, uint8_t *hash)
 {
-    static uint8_t msg[56 + 64]; // MD5 message buffer
-    uint8_t *p;
+    uint8_t msg[64]; // MD5 message buffer
     int pad_len = 56; // an 8-byte password is always padded to 56-byte
     uint64_t bits_len;
 
@@ -69,21 +68,19 @@ void md5(uint8_t *initial_msg, size_t initial_len, uint8_t *hash)
     // Since for HW-SW codesign, the input is a 8-byte password, we always
     //   pad it to 448 bits.
     memset(msg, 0, sizeof(msg)); // initialize the MD5 message buffer to zeros
-    memcpy(msg, initial_msg, initial_len);
+    memcpy(msg, initial_msg, 8);
 
     // Pre-processing: appending a single bit of "1" to the message. 
-    msg[initial_len] = 128;
+    msg[8] = 128;
 
-    bits_len = initial_len*8;             // note, we append the length in bits
+    bits_len = 8*8;             // note, we append the length in bits
     memcpy(msg + pad_len, &bits_len, 8);  // at the end of the buffer
 
     // Process the message in successive 512-bit chunks:
     // for each 512-bit chunk of message:
-    int offset;
-    for (offset = 0; offset < pad_len; offset += (512/8))
     {
         // break chunk into sixteen 32-bit words w[j], 0 ≤ j ≤ 15
-        uint32_t *w = (uint32_t *) (msg + offset);
+        uint32_t *w = (uint32_t *) msg;
 
         // Initialize hash value for this chunk:
         uint32_t a = h0;
@@ -126,14 +123,10 @@ void md5(uint8_t *initial_msg, size_t initial_len, uint8_t *hash)
     }
 
     // store the output hash
-    p = (uint8_t *) &h0;
-    hash[ 0] = p[0], hash[ 1] = p[1], hash[ 2] = p[2], hash [ 3] = p[3];
-    p = (uint8_t *) &h1;
-    hash[ 4] = p[0], hash[ 5] = p[1], hash[ 6] = p[2], hash [ 7] = p[3];
-    p = (uint8_t *) &h2;
-    hash[ 8] = p[0], hash[ 9] = p[1], hash[10] = p[2], hash [11] = p[3];
-    p = (uint8_t *) &h3;
-    hash[12] = p[0], hash[13] = p[1], hash[14] = p[2], hash [15] = p[3];
+    memcpy(hash+ 0, &h0, 4);
+    memcpy(hash+ 4, &h1, 4);
+    memcpy(hash+ 8, &h2, 4);
+    memcpy(hash+12, &h3, 4);
 }
 
 int main(int argc, char **argv)
@@ -141,22 +134,21 @@ int main(int argc, char **argv)
     size_t len;
     uint8_t hash[16];
 
-    len = (argc == 2)? strlen(argv[1]) : 0;
+    len = (argc == 2) ? strlen(argv[1]) : 0;
     if (argc != 2 || len != 8)
     {
-        printf("\nUsage: %s 'string'\n", argv[0]);
+        printf("Usage: %s 'string'\n", argv[0]);
         printf("Note: the string length must be 8.\n");
         return 1;
     }
 
-    md5(argv[1], len, hash);
+    md5_8(argv[1], hash);
 
     // display the hash code of msg
-    printf("\nThe hash code of %s is: ", argv[1]);
-    printf("%02x%02x%02x%02x", hash[ 0], hash[ 1], hash[ 2], hash[ 3]);
-    printf("%02x%02x%02x%02x", hash[ 4], hash[ 5], hash[ 6], hash[ 7]);
-    printf("%02x%02x%02x%02x", hash[ 8], hash[ 9], hash[10], hash[11]);
-    printf("%02x%02x%02x%02x\n", hash[12], hash[13], hash[14], hash[15]);
+    printf("The hash code of %s is: ", argv[1]);
+    for(int i = 0; i < 16; i++)
+        printf("%02x", hash[i]);
+    printf("\n");
 
     return 0;
 }
