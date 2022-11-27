@@ -26,9 +26,9 @@ module lab9 (
     localparam row_A_done = "Found ???? words";
     localparam row_B_done = "in the text file";
 
-    reg [0:255] row = { row_A_init, row_B_init };
-    wire [127:0] row_A = row[0:127];
-    wire [127:0] row_B = row[127:255];
+    reg [255:0] row = { row_A_init, row_B_init };
+    wire [127:0] row_A = row[255:128];
+    wire [127:0] row_B = row[127:0];
 
     wire [3:0] btn, btn_pressed;
     reg  [3:0] prev_btn;
