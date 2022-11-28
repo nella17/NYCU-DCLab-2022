@@ -17,23 +17,28 @@ module lab9 (
 );
     genvar gi;
 
-    localparam row_A_init = "SD card cannot  ";
-    localparam row_B_init = "be initialized! ";
-    localparam row_A_idle = "Hit BTN2 to read";
-    localparam row_B_idle = "the SD card ... ";
-    localparam row_A_sear = "Search DLAB_TAG ";
-    localparam row_A_cont = "Count word size ";
-    localparam row_A_done = "Found ???? words";
-    localparam row_B_done = "in the text file";
+    reg [127:0] passwd_hash = 128'h29bdfd85ffb9655b0c34d4b85d7c8bc6; // 00004231
 
-    reg [255:0] row = { row_A_init, row_B_init };
-    wire [127:0] row_A = row[255:128];
-    wire [127:0] row_B = row[127:0];
+    localparam [0:1] S_IDLE = 0,
+                     S_CALC = 1,
+                     S_SHOW = 2,
+                     S_DONE = 3;
+    reg [0:1] P = S_IDLE, P_next;
+    reg [31:0] pass;
+    reg found;
+
+    localparam row_B_hash = "????????????????";
+    localparam row_A_idle = "Hit BTN3 to run ";
+    localparam row_A_sear = "Search md5(PASS)";
+    localparam row_A_done = "Passwd: xxxxxxxx";
+    localparam row_B_done = "Time: yyyyyyy ms";
+
+    reg [127:0] row_A = row_A_idle;
+    reg [127:0] row_B = row_B_hash;
+    wire [255:0] row = { row_A, row_B };
 
     wire [3:0] btn, btn_pressed;
     reg  [3:0] prev_btn;
-
-    reg [127:0] passwd_hash = 128'he8cd0953abdfde433dfec7faa70df7f6;
 
     generate for(gi = 0; gi < 4; gi = gi+1) begin
         debounce db_btn(.clk(clk), .reset_n(reset_n), .in(usr_btn[gi]), .out(btn[gi]));
@@ -50,19 +55,49 @@ module lab9 (
         .LCD_D(LCD_D)
     );
 
-    reg [0:8*8-1] md5_in = "53589793";
-    wire md5_start = btn_pressed[3];
-    wire md5_done;
-    wire [0:8*16-1] md5_out;
+    wire md5_start = P == S_CALC;
+    reg [31:0] md5_low = 0, md5_high = 32'h99999999;
+    wire md5_done, md5_found;
+    wire [31:0] md5_pass;
 
-    md5 md5(
+    md5_bf md5_bf(
         .clk(clk),
         .reset_n(reset_n),
-        .in(md5_in),
         .start(md5_start),
+        .low(md5_low),
+        .high(md5_high),
+        .hash(passwd_hash),
         .done(md5_done),
-        .out(md5_out)
+        .found(md5_found),
+        .pass(md5_pass)
     );
+
+    always @(posedge clk) begin
+        if (~reset_n)
+            P <= S_IDLE;
+        else
+            P <= P_next;
+    end
+    always @(*) begin
+        case (P)
+        S_IDLE:
+            if (btn_pressed[3])
+                P_next = S_CALC;
+            else
+                P_next = S_IDLE;
+        S_CALC:
+            if (found)
+                P_next = S_SHOW;
+            else
+                P_next = S_CALC;
+        S_SHOW:
+            P_next = S_DONE;
+        S_DONE:
+            P_next = S_DONE;
+        default:
+            P_next = S_IDLE;
+        endcase
+    end
 
     always @(posedge clk) begin
         prev_btn <= ~reset_n ? 0 : btn;
@@ -70,16 +105,24 @@ module lab9 (
     assign btn_pressed = ~prev_btn & btn;
 
     always @(posedge clk) begin
-        if (md5_done)
-            passwd_hash <= md5_out;
+        if (~reset_n)
+            found <= 0;
+        else if (md5_found) begin
+            found <= 1;
+            pass <= md5_pass;
+        end
     end
 
     reg [7:0] i;
     always @(posedge clk) begin
-        if (~reset_n) begin
-            row <= { row_A_init, row_B_init };
-        end else begin
-            `N2T(i, 32, passwd_hash,  0, row, 0)
+        if (~reset_n)
+            { row_A, row_B } <= { row_A_idle, row_B_hash };
+        else if (P == S_IDLE || P == S_CALC)
+            `N2T(i, 16, passwd_hash, 16, row_B, 0)
+        else if (P == S_SHOW)
+            { row_A, row_B } <= { row_A_done, row_B_done };
+        else if (P == S_DONE) begin
+            `N2T(i, 8, pass,  0, row_A, 0)
         end
     end
 
