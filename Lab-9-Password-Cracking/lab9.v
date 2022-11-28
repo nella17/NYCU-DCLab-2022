@@ -143,6 +143,9 @@ module lab9 (
     end
 
     // uart
+    reg [5:0] idx;
+    wire print_enable, print_done;
+
     localparam [1:0] S_UART_IDLE = 0,
                      S_UART_WAIT = 1,
                      S_UART_SEND = 2,
@@ -152,9 +155,6 @@ module lab9 (
     wire [7:0] rx_byte;
     wire [7:0] tx_byte = row[idx*8 +: 8];
     wire is_receiving, is_transmitting, recv_error;
-
-    reg [5:0] idx;
-    wire print_enable, print_done;
 
     assign print_enable = F_next == S_SHOW;
     assign print_done = U == S_UART_INCR;
