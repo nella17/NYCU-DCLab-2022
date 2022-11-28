@@ -4,6 +4,8 @@
 `define N2T(i, bits, in, of, out, off) \
     for(i = 0; i < bits; i = i+1) \
         out[8*(off+i) +: 8] <= in[(i+of)*4 +: 4] + ((in[(i+of)*4 +: 4] < 10) ? "0" : "A"-10);
+`define BCD_ADD(in, inc) \
+    ((in) + (inc) + ((inc) && (in) >= 9 ? 6 : 0))
 
 `timescale 1ns / 1ps
 module lab9 (
@@ -129,6 +131,33 @@ module lab9 (
         end
     end
 
+    localparam MS_TICKS = 100_000;
+    reg [$clog2(MS_TICKS):0] ms_tick = 0;
+    reg [4*7-1:0] ms_cnt = 0;
+    reg [7:0] ms_carry = 0;
+    always @(posedge clk) begin
+        if (~reset_n || F == S_IDLE) begin
+            ms_tick <= 0;
+            ms_carry[0] <= 0;
+        end else if (F == S_CALC) begin
+            if (ms_tick < MS_TICKS) begin
+                ms_tick <= ms_tick + 1;
+                ms_carry[0] <= 0;
+            end else begin
+                ms_tick <= 0;
+                ms_carry[0] <= 1;
+            end
+        end
+    end
+    generate for(gi = 0; gi < 7; gi = gi+1) begin
+        always @(posedge clk) begin
+            if (~reset_n || F == S_IDLE)
+                ms_cnt[gi*4+:4] <= 0;
+            else
+                { ms_carry[gi+1], ms_cnt[gi*4+:4] } <= `BCD_ADD(ms_cnt[gi*4+:4], ms_carry[gi]);
+        end
+    end endgenerate
+
     reg [7:0] i;
     always @(posedge clk) begin
         if (~reset_n)
@@ -138,7 +167,8 @@ module lab9 (
         else if (F == S_CALC)
             { row_A, row_B } <= { row_A_done, row_B_done };
         else if (F == S_SHOW) begin
-            `N2T(i, 8, pass,  0, row_A, 0)
+            `N2T(i, 8, pass,   0, row_A, 0)
+            `N2T(i, 7, ms_cnt, 0, row_B, 3)
         end
     end
 
