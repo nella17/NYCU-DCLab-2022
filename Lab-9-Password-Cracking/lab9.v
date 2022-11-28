@@ -50,7 +50,7 @@ module lab9 (
 
     reg [127:0] row_A = row_A_idle;
     reg [127:0] row_B = row_B_hash;
-    wire [0:255+8*5] row = { row_A, CRLF, row_B, CRLF, NULL };
+    wire [0:255+8*7] row = { CRLF, row_A, CRLF, row_B, CRLF, NULL };
 
     wire [3:0] btn, btn_pressed;
     reg  [3:0] prev_btn;
