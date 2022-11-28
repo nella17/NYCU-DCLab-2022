@@ -9,24 +9,36 @@
 module lab9 (
     input clk,
     input reset_n,
+
     input [3:0] usr_btn,
+
     output LCD_RS,
     output LCD_RW,
     output LCD_E,
-    output [3:0] LCD_D
+    output [3:0] LCD_D,
+
+    input  uart_rx,
+    output uart_tx
 );
     localparam CRLF = "\x0D\x0A";
+    localparam CR = "\x0D";
+    localparam LF = "\x0A";
+    localparam NULL = "\x00";
+    localparam DEBUG = 1;
+
     genvar gi;
 
-    reg [127:0] passwd_hash = 128'h29bdfd85ffb9655b0c34d4b85d7c8bc6; // 00004231
+    reg [127:0] passwd_hash = 128'h9732ab100ad8d4a38dbbfe85bcdafde8; // 00054231
 
     localparam [0:1] S_IDLE = 0,
                      S_CALC = 1,
                      S_SHOW = 2,
                      S_DONE = 3;
-    reg [0:1] P = S_IDLE, P_next;
+    reg [0:1] F = S_IDLE, F_next;
     reg [31:0] pass;
     reg found;
+
+    wire uart_done;
 
     localparam row_B_hash = "????????????????";
     localparam row_A_idle = "Hit BTN3 to run ";
@@ -36,7 +48,7 @@ module lab9 (
 
     reg [127:0] row_A = row_A_idle;
     reg [127:0] row_B = row_B_hash;
-    wire [255+8*4:0] row = { row_A, CRLF, row_B, CRLF };
+    wire [0:255+8*5] row = { row_A, CRLF, row_B, CRLF, NULL };
 
     wire [3:0] btn, btn_pressed;
     reg  [3:0] prev_btn;
@@ -56,7 +68,7 @@ module lab9 (
         .LCD_D(LCD_D)
     );
 
-    wire md5_start = P == S_CALC;
+    wire md5_start = F == S_CALC;
     reg [31:0] md5_low = 0, md5_high = 32'h99999999;
     wire md5_done, md5_found;
     wire [31:0] md5_pass;
@@ -75,28 +87,31 @@ module lab9 (
 
     always @(posedge clk) begin
         if (~reset_n)
-            P <= S_IDLE;
+            F <= S_IDLE;
         else
-            P <= P_next;
+            F <= F_next;
     end
     always @(*) begin
-        case (P)
+        case (F)
         S_IDLE:
-            if (btn_pressed[3])
-                P_next = S_CALC;
+            if (DEBUG || btn_pressed[3])
+                F_next = S_CALC;
             else
-                P_next = S_IDLE;
+                F_next = S_IDLE;
         S_CALC:
             if (found)
-                P_next = S_SHOW;
+                F_next = S_SHOW;
             else
-                P_next = S_CALC;
+                F_next = S_CALC;
         S_SHOW:
-            P_next = S_DONE;
+            if (uart_done)
+                F_next = S_DONE;
+            else
+                F_next = S_SHOW;
         S_DONE:
-            P_next = S_DONE;
+            F_next = S_DONE;
         default:
-            P_next = S_IDLE;
+            F_next = S_IDLE;
         endcase
     end
 
@@ -118,13 +133,79 @@ module lab9 (
     always @(posedge clk) begin
         if (~reset_n)
             { row_A, row_B } <= { row_A_idle, row_B_hash };
-        else if (P == S_IDLE || P == S_CALC)
+        else if (F == S_IDLE)
             `N2T(i, 16, passwd_hash, 16, row_B, 0)
-        else if (P == S_SHOW)
+        else if (F == S_CALC)
             { row_A, row_B } <= { row_A_done, row_B_done };
-        else if (P == S_DONE) begin
+        else if (F == S_SHOW) begin
             `N2T(i, 8, pass,  0, row_A, 0)
         end
+    end
+
+    // uart
+    localparam [1:0] S_UART_IDLE = 0,
+                     S_UART_WAIT = 1,
+                     S_UART_SEND = 2,
+                     S_UART_INCR = 3;
+    reg [1:0] U, U_next;
+    wire transmit, received;
+    wire [7:0] rx_byte;
+    wire [7:0] tx_byte = row[idx*8 +: 8];
+    wire is_receiving, is_transmitting, recv_error;
+
+    reg [5:0] idx;
+    wire print_enable, print_done;
+
+    assign print_enable = F_next == S_SHOW;
+    assign print_done = U == S_UART_INCR;
+    assign transmit = (U_next == S_UART_WAIT) || print_enable;
+
+    assign uart_done = tx_byte == NULL;
+
+    always @(posedge clk) begin
+        idx <= ~reset_n ? 0 : idx + print_done;
+    end
+
+    uart uart(
+        .clk(clk),
+        .rst(~reset_n),
+        .rx(uart_rx),
+        .tx(uart_tx),
+        .transmit(transmit),
+        .tx_byte(tx_byte),
+        .received(received),
+        .rx_byte(rx_byte),
+        .is_receiving(is_receiving),
+        .is_transmitting(is_transmitting),
+        .recv_error(recv_error)
+    );
+
+    always @(posedge clk) begin
+        U <= ~reset_n ? S_UART_IDLE : U_next;
+    end
+
+    always @(*) begin
+        case (U)
+            S_UART_IDLE:
+                if (print_enable)
+                    U_next = S_UART_WAIT;
+                else
+                    U_next = S_UART_IDLE;
+            S_UART_WAIT:
+                if (is_transmitting == 1)
+                    U_next = S_UART_SEND;
+                else
+                    U_next = S_UART_WAIT;
+            S_UART_SEND:
+                if (is_transmitting == 0)
+                    U_next = S_UART_INCR;
+                else
+                    U_next = S_UART_SEND;
+            S_UART_INCR:
+                U_next = S_UART_IDLE;
+            default:
+                U_next = S_UART_IDLE;
+        endcase
     end
 
 endmodule
