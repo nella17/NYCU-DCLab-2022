@@ -67,6 +67,7 @@ module lab9_tb ();
     );
 
     initial begin
+        lab9.passwd_hash = 128'h29bdfd85ffb9655b0c34d4b85d7c8bc6; // 00004231
         #10 -> reset_trigger;
         @ (reset_done_trigger);
         #150 btn[3] = 1;

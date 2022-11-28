@@ -28,7 +28,7 @@ module lab9 (
 
     genvar gi;
 
-    reg [127:0] passwd_hash = 128'h9732ab100ad8d4a38dbbfe85bcdafde8; // 00054231
+    reg [127:0] passwd_hash = 128'h0113df004fea93a20fb02c1fa5fda95d; // 07654231
 
     localparam [0:1] S_IDLE = 0,
                      S_CALC = 1,
