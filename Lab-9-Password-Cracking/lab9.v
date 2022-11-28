@@ -15,6 +15,7 @@ module lab9 (
     output LCD_E,
     output [3:0] LCD_D
 );
+    localparam CRLF = "\x0D\x0A";
     genvar gi;
 
     reg [127:0] passwd_hash = 128'h29bdfd85ffb9655b0c34d4b85d7c8bc6; // 00004231
@@ -35,7 +36,7 @@ module lab9 (
 
     reg [127:0] row_A = row_A_idle;
     reg [127:0] row_B = row_B_hash;
-    wire [255:0] row = { row_A, row_B };
+    wire [255+8*4:0] row = { row_A, CRLF, row_B, CRLF };
 
     wire [3:0] btn, btn_pressed;
     reg  [3:0] prev_btn;

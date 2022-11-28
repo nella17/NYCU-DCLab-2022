@@ -37,7 +37,7 @@ module lab9_tb ();
         #150 btn[3] = 1;
         @ (posedge lab9.md5_done);
         #50;
-        $display("%s\n", lab9.row);
+        $display("%s", lab9.row);
         $finish;
     end
 
