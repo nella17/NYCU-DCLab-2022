@@ -30,7 +30,7 @@ module lab9 (
 
     genvar gi;
 
-    reg [127:0] passwd_hash = 128'he8cd0953abdfde433dfec7faa70df7f6; // 53589793
+    reg [127:0] passwd_hash = 128'hef775988943825d2871e1cfa75473ec0; // 99999999
     localparam INSTANCE_CNT = 2;
     localparam MAX_PASS = 33'd2576980378;
     localparam [31:0] SPLIT = 1 + (MAX_PASS-1) / INSTANCE_CNT;
