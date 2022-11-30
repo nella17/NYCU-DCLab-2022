@@ -33,7 +33,7 @@ module lab9 (
     reg [127:0] passwd_hash = 128'he8cd0953abdfde433dfec7faa70df7f6; // 53589793
     localparam INSTANCE_CNT = 2;
     localparam MAX_PASS = 33'd2576980378;
-    localparam [31:0] SPLIT = $floor(1 + (MAX_PASS-1) / INSTANCE_CNT);
+    localparam [31:0] SPLIT = 1 + (MAX_PASS-1) / INSTANCE_CNT;
 
     localparam [0:1] S_IDLE = 0,
                      S_CALC = 1,
