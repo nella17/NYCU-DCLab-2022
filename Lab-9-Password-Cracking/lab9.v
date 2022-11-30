@@ -30,7 +30,10 @@ module lab9 (
 
     genvar gi;
 
-    reg [127:0] passwd_hash = 128'h0113df004fea93a20fb02c1fa5fda95d; // 07654231
+    reg [127:0] passwd_hash = 128'he8cd0953abdfde433dfec7faa70df7f6; // 53589793
+    localparam [10:0] INSTANCE_CNT = 32;
+    localparam [31:0] MAX_PASS = 2576980378;
+    localparam [31:0] SPLIT = 80530637;
 
     localparam [0:1] S_IDLE = 0,
                      S_CALC = 1,
@@ -71,21 +74,35 @@ module lab9 (
     );
 
     wire md5_start = F == S_CALC;
-    reg [31:0] md5_low = 0, md5_high = 32'h99999999;
-    wire md5_done, md5_found;
+    wire [INSTANCE_CNT-1:0] _md5_done, _md5_found;
+    wire [31:0] _md5_pass [0:INSTANCE_CNT-1];
+    generate for(gi = 0; gi < INSTANCE_CNT; gi = gi+1) begin
+        reg [31:0] md5_low = SPLIT * gi;
+        reg [31:0] md5_high = SPLIT * (gi+1) - 1;
+        md5_bf md5_bf(
+            .clk(clk),
+            .reset_n(reset_n),
+            .start(md5_start),
+            .low(md5_low),
+            .high(md5_high),
+            .hash(passwd_hash),
+            .done(_md5_done[gi]),
+            .found(_md5_found[gi]),
+            .pass(_md5_pass[gi])
+        );
+    end endgenerate
+    wire md5_done = |(_md5_done), md5_found = |(_md5_found);
+    wire [0:INSTANCE_CNT-1] _md5_pass_wire [31:0];
+    generate for(gi = 0; gi < 32; gi = gi+1) begin
+        genvar gj;
+        for(gj = 0; gj < INSTANCE_CNT; gj = gj+1) begin
+            assign _md5_pass_wire[gi][gj] = _md5_pass[gj][gi];
+        end
+    end endgenerate
     wire [31:0] md5_pass;
-
-    md5_bf md5_bf(
-        .clk(clk),
-        .reset_n(reset_n),
-        .start(md5_start),
-        .low(md5_low),
-        .high(md5_high),
-        .hash(passwd_hash),
-        .done(md5_done),
-        .found(md5_found),
-        .pass(md5_pass)
-    );
+    generate for(gi = 0; gi < 32; gi = gi+1) begin
+        assign md5_pass[gi] = |(_md5_pass_wire[gi]);
+    end endgenerate
 
     always @(posedge clk) begin
         if (~reset_n)

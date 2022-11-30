@@ -157,7 +157,9 @@ module md5 (
     end
 
     always @(posedge clk) begin
-        if (P == S_OUTP)
+        if (~reset_n || P == S_IDLE)
+            out <= 0;
+        else if (P == S_OUTP)
             out <= {
                 trans_endian( a + h[0] ),
                 trans_endian( b + h[1] ),

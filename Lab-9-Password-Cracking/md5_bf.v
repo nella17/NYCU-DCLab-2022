@@ -84,11 +84,12 @@ module md5_bf (
     end
 
     always @(posedge clk) begin
-        if (~reset_n) begin
-            found <= 0;
-        end else if (md5_out == hash) begin
+        if (md5_done && md5_out === hash) begin
             found <= 1;
             pass <= number;
+        end else begin
+            found <= 0;
+            pass <= 0;
         end
     end
 
