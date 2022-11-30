@@ -28,6 +28,7 @@ module md5 (
     reg [0:2] P = S_IDLE, P_next;
 
     reg [6:0] ci;
+    reg [5:0] i1;
     wire [5:0] i;
 
     reg [0:32*64-1] k_raw = {
@@ -101,7 +102,7 @@ module md5 (
             if (ci == 64 - 1)
                 P_next = S_OUTP;
             else
-                P_next = S_CALC;
+                P_next = S_INCR;
         S_OUTP:
             P_next = S_DONE;
         S_DONE:
@@ -123,10 +124,13 @@ module md5 (
 
     assign i = ci[5:0];
     always @(posedge clk) begin
-        if (~reset_n || P == S_IDLE)
+        if (~reset_n || P == S_IDLE) begin
             ci <= 0;
-        else if (P == S_INCR || P == S_OUTP)
+            i1 <= 1;
+        end else if (P == S_INCR) begin
             ci <= ci + 1;
+            i1 <= i1 + 1;
+        end
     end
 
     reg [0:31] a, b, c, d;
@@ -140,21 +144,21 @@ module md5 (
         4'h0, 4'h7, 4'he, 4'h5, 4'hc, 4'h3, 4'ha, 4'h1, 4'h8, 4'hf, 4'h6, 4'hd, 4'h4, 4'hb, 4'h2, 4'h9
     };
     wire [0:3] g = g_table[i*4 +: 4];
-
-    reg [0:31] afkw;
-    always @(posedge clk) begin
-        if (P == S_CALC)
-            afkw <= a + f + k[i] + w[g];
-    end
+    wire [0:3] g1 = g_table[i1*4 +: 4];
 
     always @(posedge clk) begin
         if (~reset_n || P == S_IDLE) begin
             a <= h[0]; b <= h[1]; c <= h[2]; d <= h[3];
+        end else if (P == S_CALC) begin
+            a <= a + k[i] + w[g];
         end else if (P == S_INCR) begin
-            a <= d;
-            b <= b + `ROL32(afkw, r[i]);
-            d <= c;
+            if (i1 == 0)
+                a <= d;
+            else
+                a <= d + k[i1] + w[g1];
+            b <= b + `ROL32(f + a, r[i]);
             c <= b;
+            d <= c;
         end
     end
 
