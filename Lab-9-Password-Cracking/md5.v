@@ -103,10 +103,7 @@ module md5 (
             else
                 P_next = S_CALC;
         S_OUTP:
-            // if (ci == 64 + 1)
-                P_next = S_DONE;
-            // else
-            //     P_next = S_OUTP;
+            P_next = S_DONE;
         S_DONE:
             P_next = S_IDLE;
         default:
@@ -136,7 +133,12 @@ module md5 (
     wire [0:31] f = (i < 16) ? ((b & c) | ((~b) & d)) :
                     (i < 32) ? ((d & b) | ((~d) & c)) :
                     (i < 48) ? (b ^ c ^ d) : (c ^ (b | (~d))) ;
-    reg [0:4*64-1] g_table = { 4'h0, 4'h1, 4'h2, 4'h3, 4'h4, 4'h5, 4'h6, 4'h7, 4'h8, 4'h9, 4'ha, 4'hb, 4'hc, 4'hd, 4'he, 4'hf, 4'h1, 4'h6, 4'hb, 4'h0, 4'h5, 4'ha, 4'hf, 4'h4, 4'h9, 4'he, 4'h3, 4'h8, 4'hd, 4'h2, 4'h7, 4'hc, 4'h5, 4'h8, 4'hb, 4'he, 4'h1, 4'h4, 4'h7, 4'ha, 4'hd, 4'h0, 4'h3, 4'h6, 4'h9, 4'hc, 4'hf, 4'h2, 4'h0, 4'h7, 4'he, 4'h5, 4'hc, 4'h3, 4'ha, 4'h1, 4'h8, 4'hf, 4'h6, 4'hd, 4'h4, 4'hb, 4'h2, 4'h9 };
+    reg [0:4*64-1] g_table = {
+        4'h0, 4'h1, 4'h2, 4'h3, 4'h4, 4'h5, 4'h6, 4'h7, 4'h8, 4'h9, 4'ha, 4'hb, 4'hc, 4'hd, 4'he, 4'hf,
+        4'h1, 4'h6, 4'hb, 4'h0, 4'h5, 4'ha, 4'hf, 4'h4, 4'h9, 4'he, 4'h3, 4'h8, 4'hd, 4'h2, 4'h7, 4'hc,
+        4'h5, 4'h8, 4'hb, 4'he, 4'h1, 4'h4, 4'h7, 4'ha, 4'hd, 4'h0, 4'h3, 4'h6, 4'h9, 4'hc, 4'hf, 4'h2,
+        4'h0, 4'h7, 4'he, 4'h5, 4'hc, 4'h3, 4'ha, 4'h1, 4'h8, 4'hf, 4'h6, 4'hd, 4'h4, 4'hb, 4'h2, 4'h9
+    };
     wire [0:3] g = g_table[i*4 +: 4];
 
     reg [0:31] afkw;
