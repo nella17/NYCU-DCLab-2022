@@ -7,7 +7,7 @@ module md5 (
     input  [0:8*8-1] in,
     input  start,
     output done,
-    output reg [0:8*16-1] out
+    output [0:8*16-1] out
 );
     function [0:31] trans_endian (input [0:31] in); begin
         trans_endian = {
@@ -147,6 +147,12 @@ module md5 (
     };
     wire [0:3] g1 = g_table[(i+1)*4 +: 4];
 
+    assign out = {
+        trans_endian(a),
+        trans_endian(b),
+        trans_endian(c),
+        trans_endian(d)
+    };
     always @(posedge clk) begin
         if (~reset_n || P == S_IDLE) begin
             a <= h[0]; b <= h[1]; c <= h[2]; d <= h[3];
@@ -160,19 +166,12 @@ module md5 (
             b <= b + `ROL32(f + a, r[i]);
             c <= b;
             d <= c;
+        end else if (P == S_OUTP) begin
+            a <= a + h[0];
+            b <= b + h[1];
+            c <= c + h[2];
+            d <= d + h[3];
         end
-    end
-
-    always @(posedge clk) begin
-        if (~reset_n || P == S_IDLE)
-            out <= 0;
-        else if (P == S_OUTP)
-            out <= {
-                trans_endian( a + h[0] ),
-                trans_endian( b + h[1] ),
-                trans_endian( c + h[2] ),
-                trans_endian( d + h[3] )
-            };
     end
 
 endmodule
