@@ -27,8 +27,7 @@ module md5 (
                      S_DONE = 4;
     reg [0:2] P = S_IDLE, P_next;
 
-    reg [6:0] ci;
-    wire [5:0] i;
+    reg [5:0] i, i1;
 
     reg [0:32*64-1] k_raw = {
         32'hd76aa478, 32'he8c7b756, 32'h242070db, 32'hc1bdceee,
@@ -98,7 +97,7 @@ module md5 (
         S_CALC:
             P_next = S_INCR;
         S_INCR:
-            if (ci == 64 - 1)
+            if (i == 64 - 1)
                 P_next = S_OUTP;
             else
                 P_next = S_INCR;
@@ -121,16 +120,17 @@ module md5 (
         end
     end
 
-    assign i = ci[5:0];
     always @(posedge clk) begin
         if (~reset_n || P == S_IDLE) begin
-            ci <= 0;
+            i <= 0;
+            i1 <= 1;
         end else if (P == S_INCR) begin
-            ci <= ci + 1;
+            i <= i + 1;
+            i1 <= i1 + 1;
         end
     end
 
-    reg [0:31] a, b, c, d, f;
+    reg [0:31] a, b, c, d, f, t;
     always @(*) begin
         case (i[5:4])
             0: f = ((b & c) | ((~b) & d));
@@ -145,7 +145,7 @@ module md5 (
         4'h5, 4'h8, 4'hb, 4'he, 4'h1, 4'h4, 4'h7, 4'ha, 4'hd, 4'h0, 4'h3, 4'h6, 4'h9, 4'hc, 4'hf, 4'h2,
         4'h0, 4'h7, 4'he, 4'h5, 4'hc, 4'h3, 4'ha, 4'h1, 4'h8, 4'hf, 4'h6, 4'hd, 4'h4, 4'hb, 4'h2, 4'h9
     };
-    wire [0:3] g1 = g_table[(i+1)*4 +: 4];
+    wire [0:3] g1 = g_table[i1*4 +: 4];
 
     assign out = {
         trans_endian(a),
@@ -157,15 +157,13 @@ module md5 (
         if (~reset_n || P == S_IDLE) begin
             a <= h[0]; b <= h[1]; c <= h[2]; d <= h[3];
         end else if (P == S_CALC) begin
-            a <= a + k[i] + w[0];
+            t <= a + k[i] + w[0];
         end else if (P == S_INCR) begin
-            if (i == 64-1)
-                a <= d;
-            else
-                a <= d + k[i+1] + w[g1];
-            b <= b + `ROL32(f + a, r[i]);
+            a <= d;
+            b <= b + `ROL32(f + t, r[i]);
             c <= b;
             d <= c;
+            t <= d + k[i1] + w[g1];
         end else if (P == S_OUTP) begin
             a <= a + h[0];
             b <= b + h[1];

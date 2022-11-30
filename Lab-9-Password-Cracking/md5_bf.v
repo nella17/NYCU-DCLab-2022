@@ -97,7 +97,7 @@ module md5_bf (
         if (~reset_n || P == S_IDLE) begin
             number <= low;
         end else if (P == S_INCR) begin
-            number <= number + (number != high);
+            number <= number + 1;
         end
     end
 

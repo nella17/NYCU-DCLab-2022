@@ -245,12 +245,12 @@ module lab9 (
                 else
                     U_next = S_UART_IDLE;
             S_UART_WAIT:
-                if (is_transmitting == 1)
+                if (is_transmitting)
                     U_next = S_UART_SEND;
                 else
                     U_next = S_UART_WAIT;
             S_UART_SEND:
-                if (is_transmitting == 0)
+                if (~is_transmitting)
                     U_next = S_UART_INCR;
                 else
                     U_next = S_UART_SEND;
