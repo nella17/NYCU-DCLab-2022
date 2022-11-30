@@ -130,10 +130,15 @@ module md5 (
         end
     end
 
-    reg [0:31] a, b, c, d;
-    wire [0:31] f = (i < 16) ? ((b & c) | ((~b) & d)) :
-                    (i < 32) ? ((d & b) | ((~d) & c)) :
-                    (i < 48) ? (b ^ c ^ d) : (c ^ (b | (~d))) ;
+    reg [0:31] a, b, c, d, f;
+    always @(*) begin
+        case (i[5:4])
+            0: f = ((b & c) | ((~b) & d));
+            1: f = ((d & b) | ((~d) & c));
+            2: f = (b ^ c ^ d);
+            3: f = (c ^ (b | (~d)));
+        endcase
+    end
     reg [0:4*64-1] g_table = {
         4'h0, 4'h1, 4'h2, 4'h3, 4'h4, 4'h5, 4'h6, 4'h7, 4'h8, 4'h9, 4'ha, 4'hb, 4'hc, 4'hd, 4'he, 4'hf,
         4'h1, 4'h6, 4'hb, 4'h0, 4'h5, 4'ha, 4'hf, 4'h4, 4'h9, 4'he, 4'h3, 4'h8, 4'hd, 4'h2, 4'h7, 4'hc,
