@@ -38,21 +38,22 @@ module lab9 (
     localparam [0:1] S_IDLE = 0,
                      S_CALC = 1,
                      S_SHOW = 2,
-                     S_DONE = 3;
+                     S_UART = 3;
     reg [0:1] F = S_IDLE, F_next;
     reg [31:0] pass;
     reg found;
+    reg [0:1] show;
 
     wire uart_done;
 
-    localparam row_B_hash = "????????????????";
-    localparam row_A_idle = "Hit BTN3 to run ";
-    localparam row_A_sear = "Search md5(PASS)";
-    localparam row_A_done = "Passwd: xxxxxxxx";
-    localparam row_B_done = "Time: yyyyyyy ms";
+    localparam row_hash = "????????????????";
+    localparam row_idle = "Hit BTN3 to run ";
+    localparam row_sear = "Search md5(PASS)";
+    localparam row_pass = "Passwd: xxxxxxxx";
+    localparam row_time = "Time: yyyyyyy ms";
 
-    reg [127:0] row_A = row_A_idle;
-    reg [127:0] row_B = row_B_hash;
+    reg [127:0] row_A = row_idle;
+    reg [127:0] row_B = row_hash;
     wire [0:255+8*7] row = { CRLF, row_A, CRLF, row_B, CRLF, NULL };
 
     wire [3:0] btn, btn_pressed;
@@ -123,12 +124,12 @@ module lab9 (
             else
                 F_next = S_CALC;
         S_SHOW:
-            if (uart_done)
-                F_next = S_DONE;
+            if (show == 2)
+                F_next = S_UART;
             else
                 F_next = S_SHOW;
-        S_DONE:
-            F_next = S_DONE;
+        S_UART:
+            F_next = S_UART;
         default:
             F_next = S_IDLE;
         endcase
@@ -153,17 +154,12 @@ module lab9 (
     reg [4*7-1:0] ms_cnt = 0;
     reg [7:0] ms_carry = 0;
     always @(posedge clk) begin
-        if (~reset_n || F == S_IDLE) begin
+        if (~reset_n || F == S_IDLE || ms_tick == MS_TICKS-1) begin
             ms_tick <= 0;
+            ms_carry[0] <= F == S_CALC;
+        end else begin
+            ms_tick <= ms_tick + 1;
             ms_carry[0] <= 0;
-        end else if (F == S_CALC) begin
-            if (ms_tick < MS_TICKS) begin
-                ms_tick <= ms_tick + 1;
-                ms_carry[0] <= 0;
-            end else begin
-                ms_tick <= 0;
-                ms_carry[0] <= 1;
-            end
         end
     end
     generate for(gi = 0; gi < 7; gi = gi+1) begin
@@ -178,14 +174,25 @@ module lab9 (
     reg [7:0] i;
     always @(posedge clk) begin
         if (~reset_n)
-            { row_A, row_B } <= { row_A_idle, row_B_hash };
+            { row_A, row_B } <= { row_idle, row_hash };
         else if (F == S_IDLE)
             `N2T(i, 16, passwd_hash, 16, row_B, 0)
-        else if (F == S_CALC)
-            { row_A, row_B } <= { row_A_done, row_B_done };
-        else if (F == S_SHOW) begin
-            `N2T(i, 8, pass,   0, row_A, 0)
-            `N2T(i, 7, ms_cnt, 0, row_B, 3)
+        else if (F == S_CALC) begin
+            show <= 0;
+            row_A <= row_sear;
+            if (ms_tick[0])
+                row_B <= row_time;
+            else
+                `N2T(i, 7, ms_cnt, 0, row_B, 3)
+        end else if (F == S_SHOW) begin
+            if (show == 0) begin
+                show <= 1;
+                { row_A, row_B } <= { row_pass, row_time };
+            end else if (show == 1) begin
+                show <= 2;
+                `N2T(i, 8, pass, 0, row_A, 0)
+                `N2T(i, 7, ms_cnt, 0, row_B, 3)
+            end
         end
     end
 
@@ -203,11 +210,10 @@ module lab9 (
     wire [7:0] tx_byte = row[idx*8 +: 8];
     wire is_receiving, is_transmitting, recv_error;
 
-    assign print_enable = F_next == S_SHOW;
+    assign uart_done = tx_byte == NULL;
+    assign print_enable = ~uart_done && F_next == S_UART;
     assign print_done = U == S_UART_INCR;
     assign transmit = (U_next == S_UART_WAIT) || print_enable;
-
-    assign uart_done = tx_byte == NULL;
 
     always @(posedge clk) begin
         idx <= ~reset_n ? 0 : idx + print_done;
