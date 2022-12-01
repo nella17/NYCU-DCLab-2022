@@ -30,7 +30,7 @@ module md5_bf (
     wire ndec;
 
     reg [8*8-1:0] md5_in = "53589793";
-    wire md5_start = P == S_CALC;
+    wire md5_start = P != S_CALC && P_next == S_CALC;
     wire md5_done;
     wire [127:0] md5_out;
 

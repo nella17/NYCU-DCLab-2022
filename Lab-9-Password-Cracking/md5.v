@@ -6,7 +6,7 @@ module md5 (
     input  reset_n,
     input  [0:8*8-1] in_msg,
     input  in_start,
-    output out_done,
+    output reg out_done,
     output [0:8*16-1] out_hash
 );
     function [0:31] trans_endian (input [0:31] in); begin
@@ -28,15 +28,6 @@ module md5 (
     end endfunction
 
     genvar gi, gp;
-
-    localparam [0:2] S_IDLE = 0,
-                     S_CALC = 1,
-                     S_INCR = 2,
-                     S_OUTP = 3,
-                     S_DONE = 4;
-    reg [0:2] P = S_IDLE, P_next;
-
-    reg [5:0] i, i1;
 
     reg [0:32*64-1] k_raw = {
         32'hd76aa478, 32'he8c7b756, 32'h242070db, 32'hc1bdceee,
@@ -83,96 +74,80 @@ module md5 (
         assign r[gi] = r_raw[gi * 5 +: 5];
     end endgenerate
 
-    reg [0:512-1] msg = 0;
-    wire [0:31] w [0:15];
-    generate for(gi = 0; gi < 16; gi = gi+1) begin
-        assign w[gi] = trans_endian( msg[gi*32 +: 32] );
-    end endgenerate
-
-    assign out_done = P == S_DONE;
-    always @(posedge clk) begin
-        if (~reset_n)
-            P <= S_IDLE;
-        else
-            P <= P_next;
-    end
-    always @(*) begin
-        case (P)
-        S_IDLE:
-            if (in_start)
-                P_next = S_CALC;
-            else
-                P_next = S_IDLE;
-        S_CALC:
-            P_next = S_INCR;
-        S_INCR:
-            if (i == 64 - 1)
-                P_next = S_OUTP;
-            else
-                P_next = S_INCR;
-        S_OUTP:
-            P_next = S_DONE;
-        S_DONE:
-            P_next = S_IDLE;
-        default:
-            P_next = S_IDLE;
-        endcase
-    end
-
-    always @(posedge clk) begin
-        if (~reset_n)
-            msg <= 0;
-        else if (P == S_IDLE && in_start) begin
-            msg[0 +: 64] <= in_msg;
-            msg[64 +: 8] <= 8'd128;
-            msg[56*8 +: 8] <= 8'd64;
-        end
-    end
-
-    always @(posedge clk) begin
-        if (~reset_n || P == S_IDLE) begin
-            i <= 0;
-            i1 <= 1;
-        end else if (P == S_INCR) begin
-            i <= i + 1;
-            i1 <= i1 + 1;
-        end
-    end
-
-    reg [0:31] a, b, c, d, t;
-    wire [0:31] f;
-    assign f = F(i, b, c, d);
     reg [0:4*64-1] g_table = {
         4'h0, 4'h1, 4'h2, 4'h3, 4'h4, 4'h5, 4'h6, 4'h7, 4'h8, 4'h9, 4'ha, 4'hb, 4'hc, 4'hd, 4'he, 4'hf,
         4'h1, 4'h6, 4'hb, 4'h0, 4'h5, 4'ha, 4'hf, 4'h4, 4'h9, 4'he, 4'h3, 4'h8, 4'hd, 4'h2, 4'h7, 4'hc,
         4'h5, 4'h8, 4'hb, 4'he, 4'h1, 4'h4, 4'h7, 4'ha, 4'hd, 4'h0, 4'h3, 4'h6, 4'h9, 4'hc, 4'hf, 4'h2,
         4'h0, 4'h7, 4'he, 4'h5, 4'hc, 4'h3, 4'ha, 4'h1, 4'h8, 4'hf, 4'h6, 4'hd, 4'h4, 4'hb, 4'h2, 4'h9
     };
-    wire [0:3] g1 = g_table[i1*4 +: 4];
+
+    reg [0:512-1] msg [0:64];
+    wire [0:31] w [0:63] [0:15];
+    generate for(gp = 0; gp < 64; gp = gp+1) begin
+        for(gi = 0; gi < 16; gi = gi+1) begin
+            assign w[gp][gi] = trans_endian( msg[gp][gi*32 +: 32] );
+        end
+    end endgenerate
+
+    reg valid [0:64];
+    reg out_delay;
+
+    always @(posedge clk) begin
+        valid[0] <= in_start;
+        msg[0] <= {
+            in_msg,
+            8'd128,
+            376'd0,
+            8'd64,
+            56'd0
+        };
+        out_delay <= valid[64];
+        out_done <= out_delay;
+    end
+
+    generate for(gp = 0; gp < 64; gp = gp+1) begin
+        always @(posedge clk) begin
+            valid[gp+1] <= valid[gp];
+            msg[gp+1] <= msg[gp];
+        end
+    end endgenerate
+
+    reg [0:31] a [0:64], b [0:64], c [0:64], d [0:64], t [0:64];
+    wire [0:31] f [0:63];
+    wire [0:3] g [0:63];
+    generate for(gp = 0; gp < 64; gp = gp+1) begin
+        assign f[gp] = F(gp, b[gp], c[gp], d[gp]);
+        assign g[gp] = g_table[gp*4 +: 4];
+    end endgenerate
 
     assign out_hash = {
-        trans_endian(a),
-        trans_endian(b),
-        trans_endian(c),
-        trans_endian(d)
+        trans_endian(a[64] + h[0]),
+        trans_endian(b[64] + h[1]),
+        trans_endian(c[64] + h[2]),
+        trans_endian(d[64] + h[3])
     };
+
     always @(posedge clk) begin
-        if (~reset_n || P == S_IDLE) begin
-            a <= h[0]; b <= h[1]; c <= h[2]; d <= h[3];
-        end else if (P == S_CALC) begin
-            t <= a + k[i] + w[0];
-        end else if (P == S_INCR) begin
-            a <= d;
-            b <= b + `ROL32(f + t, r[i]);
-            c <= b;
-            d <= c;
-            t <= d + k[i1] + w[g1];
-        end else if (P == S_OUTP) begin
-            a <= a + h[0];
-            b <= b + h[1];
-            c <= c + h[2];
-            d <= d + h[3];
-        end
+        a[0] <= h[0];
+        b[0] <= h[1];
+        c[0] <= h[2];
+        d[0] <= h[3];
+        t[0] <= h[0] + k[0] + w[0][0];
     end
+
+    generate for(gp = 1; gp < 64; gp = gp+1) begin
+        always @(posedge clk) begin
+            t[gp] <= d[gp-1] + k[gp] + w[gp][g[gp]];
+        end
+    end endgenerate
+
+    generate for(gp = 1; gp <= 64; gp = gp+1) begin
+        always @(posedge clk) begin
+            a[gp] <= d[gp-1];
+            b[gp] <= b[gp-1] + `ROL32(f[gp-1] + t[gp-1], r[gp-1]);
+            c[gp] <= b[gp-1];
+            d[gp] <= c[gp-1];
+        end
+    end endgenerate
 
 endmodule

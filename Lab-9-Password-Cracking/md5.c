@@ -110,13 +110,25 @@ void md5_8(char *initial_msg, uint8_t *hash)
 
             uint32_t temp = d;
             uint32_t afkw = (a + f + k[i] + w[g]);
+
+            printf("%2d: %8x %x / %8x %8x %8x %8x / %8x %8x %8x %8x\n",
+                i, f, g,
+                a, b, c, d,
+                afkw, a + k[i] + w[g], k[i], w[g]
+            );
+
             d = c;
             c = b;
             b = b + LEFTROTATE(afkw, r[i]);
             a = temp;
-
-            printf("%2d: %8x %x / %8x %8x %8x %8x / %8x %8x %8x\n", i, f, g, a, b, c, d, afkw, k[i], w[g]);
         }
+
+        printf("%2d: %8x %x / %8x %8x %8x %8x / %8x %8x %8x\n",
+            i, 0, 0,
+            a, b, c, d,
+            0, 0, 0
+        );
+
 
         // Add this chunk's hash to the result so far:
         h0 += a;
