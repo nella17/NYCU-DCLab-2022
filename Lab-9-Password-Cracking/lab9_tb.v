@@ -71,7 +71,7 @@ module lab9_tb ();
         #10 -> reset_trigger;
         @ (reset_done_trigger);
         #150 btn[3] = 1;
-        @ (posedge lab9.md5_done);
+        @ (posedge lab9.found);
         #100;
         $display("%s", lab9.row);
         @ (uart_done_trigger);
