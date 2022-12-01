@@ -18,6 +18,15 @@ module md5 (
         };
     end endfunction
 
+    function [0:31] F (input [5:0] i, input [0:31] b, input [0:31] c, input [0:31] d); begin
+        case (i[5:4])
+            0: F = ((b & c) | ((~b) & d));
+            1: F = ((d & b) | ((~d) & c));
+            2: F = (b ^ c ^ d);
+            3: F = (c ^ (b | (~d)));
+        endcase
+    end endfunction
+
     genvar gi, gp;
 
     localparam [0:2] S_IDLE = 0,
@@ -130,15 +139,9 @@ module md5 (
         end
     end
 
-    reg [0:31] a, b, c, d, f, t;
-    always @(*) begin
-        case (i[5:4])
-            0: f = ((b & c) | ((~b) & d));
-            1: f = ((d & b) | ((~d) & c));
-            2: f = (b ^ c ^ d);
-            3: f = (c ^ (b | (~d)));
-        endcase
-    end
+    reg [0:31] a, b, c, d, t;
+    wire [0:31] f;
+    assign f = F(i, b, c, d);
     reg [0:4*64-1] g_table = {
         4'h0, 4'h1, 4'h2, 4'h3, 4'h4, 4'h5, 4'h6, 4'h7, 4'h8, 4'h9, 4'ha, 4'hb, 4'hc, 4'hd, 4'he, 4'hf,
         4'h1, 4'h6, 4'hb, 4'h0, 4'h5, 4'ha, 4'hf, 4'h4, 4'h9, 4'he, 4'h3, 4'h8, 4'hd, 4'h2, 4'h7, 4'hc,
