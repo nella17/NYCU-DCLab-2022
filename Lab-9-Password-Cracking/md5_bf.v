@@ -37,10 +37,10 @@ module md5_bf (
     md5 md5(
         .clk(clk),
         .reset_n(reset_n),
-        .in(md5_in),
-        .start(md5_start),
-        .done(md5_done),
-        .out(md5_out)
+        .in_msg(md5_in),
+        .in_start(md5_start),
+        .out_done(md5_done),
+        .out_hash(md5_out)
     );
 
     assign done = P == S_DONE;

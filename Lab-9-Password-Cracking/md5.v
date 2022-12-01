@@ -4,10 +4,10 @@
 module md5 (
     input  clk,
     input  reset_n,
-    input  [0:8*8-1] in,
-    input  start,
-    output done,
-    output [0:8*16-1] out
+    input  [0:8*8-1] in_msg,
+    input  in_start,
+    output out_done,
+    output [0:8*16-1] out_hash
 );
     function [0:31] trans_endian (input [0:31] in); begin
         trans_endian = {
@@ -18,7 +18,7 @@ module md5 (
         };
     end endfunction
 
-    genvar gi;
+    genvar gi, gp;
 
     localparam [0:2] S_IDLE = 0,
                      S_CALC = 1,
@@ -80,7 +80,7 @@ module md5 (
         assign w[gi] = trans_endian( msg[gi*32 +: 32] );
     end endgenerate
 
-    assign done = P == S_DONE;
+    assign out_done = P == S_DONE;
     always @(posedge clk) begin
         if (~reset_n)
             P <= S_IDLE;
@@ -90,7 +90,7 @@ module md5 (
     always @(*) begin
         case (P)
         S_IDLE:
-            if (start)
+            if (in_start)
                 P_next = S_CALC;
             else
                 P_next = S_IDLE;
@@ -113,8 +113,8 @@ module md5 (
     always @(posedge clk) begin
         if (~reset_n)
             msg <= 0;
-        else if (P == S_IDLE && start) begin
-            msg[0 +: 64] <= in;
+        else if (P == S_IDLE && in_start) begin
+            msg[0 +: 64] <= in_msg;
             msg[64 +: 8] <= 8'd128;
             msg[56*8 +: 8] <= 8'd64;
         end
@@ -147,7 +147,7 @@ module md5 (
     };
     wire [0:3] g1 = g_table[i1*4 +: 4];
 
-    assign out = {
+    assign out_hash = {
         trans_endian(a),
         trans_endian(b),
         trans_endian(c),
