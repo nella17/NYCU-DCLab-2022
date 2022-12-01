@@ -16,30 +16,29 @@ module md5_bf (
 );
     genvar gi;
 
-    localparam [0:2] S_IDLE = 0,
-                     S_INIT = 1,
-                     S_VALD = 2,
-                     S_CALC = 3,
-                     S_CHEK = 4,
-                     S_INCR = 5,
-                     S_DONE = 6;
-    reg [0:2] P = S_IDLE, P_next;
+    localparam [0:1] S_IDLE = 0,
+                     S_CALC = 1,
+                     S_DONE = 2;
+    reg [0:1] P = S_IDLE, P_next;
 
-    reg [31:0] number;
+    reg [31:0] number, in_pass;
     wire [0:7] _ndec;
     wire ndec;
 
-    reg [8*8-1:0] md5_in = "53589793";
-    wire md5_start = P != S_CALC && P_next == S_CALC;
+    reg [8*8-1:0] md5_in;
+    wire md5_start = ndec;
     wire md5_done;
+    wire [31:0] md5_pass;
     wire [127:0] md5_out;
 
     md5 md5(
         .clk(clk),
         .reset_n(reset_n),
         .in_msg(md5_in),
+        .in_pass(in_pass),
         .in_start(md5_start),
         .out_done(md5_done),
+        .out_pass(md5_pass),
         .out_hash(md5_out)
     );
 
@@ -54,28 +53,14 @@ module md5_bf (
         case (P)
         S_IDLE:
             if (start)
-                P_next = S_INIT;
+                P_next = S_CALC;
             else
                 P_next = S_IDLE;
-        S_INIT:
-            P_next = S_VALD;
-        S_VALD:
-            if (ndec)
-                P_next = S_CALC;
-            else
-                P_next = S_INCR;
         S_CALC:
-            if (md5_done)
-                P_next = S_CHEK;
-            else
-                P_next = S_CALC;
-        S_CHEK:
-            if (found || number == high)
+            if (found || md5_pass == high)
                 P_next = S_DONE;
             else
-                P_next = S_INCR;
-        S_INCR:
-            P_next = S_INIT;
+                P_next = S_CALC;
         S_DONE:
             P_next = S_DONE;
         default:
@@ -86,8 +71,8 @@ module md5_bf (
     always @(posedge clk) begin
         if (md5_done && md5_out === hash) begin
             found <= 1;
-            pass <= number;
-        end else begin
+            pass <= md5_pass;
+        end else if (~reset_n || P == S_IDLE || ~found) begin
             found <= 0;
             pass <= 0;
         end
@@ -96,7 +81,7 @@ module md5_bf (
     always @(posedge clk) begin
         if (~reset_n || P == S_IDLE) begin
             number <= low;
-        end else if (P == S_INCR) begin
+        end else if (P == S_CALC) begin
             number <= number + 1;
         end
     end
@@ -108,8 +93,8 @@ module md5_bf (
 
     reg [3:0] i;
     always @(posedge clk) begin
-        if (P == S_INIT)
-            `N2T(i, 8, number, 0, md5_in, 0)
+        in_pass <= number;
+        `N2T(i, 8, number, 0, md5_in, 0)
     end
 
 endmodule

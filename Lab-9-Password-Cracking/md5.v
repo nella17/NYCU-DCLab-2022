@@ -6,7 +6,9 @@ module md5 (
     input  reset_n,
     input  [0:8*8-1] in_msg,
     input  in_start,
+    input  [31:0] in_pass,
     output reg out_done,
+    output reg [31:0] out_pass,
     output [0:8*16-1] out_hash
 );
     function [0:31] trans_endian (input [0:31] in); begin
@@ -90,7 +92,8 @@ module md5 (
     end endgenerate
 
     reg valid [0:64];
-    reg out_delay;
+    reg [31:0] pass [0:64], pass_delay;
+    reg done_delay;
 
     always @(posedge clk) begin
         valid[0] <= in_start;
@@ -101,14 +104,18 @@ module md5 (
             8'd64,
             56'd0
         };
-        out_delay <= valid[64];
-        out_done <= out_delay;
+        pass[0] <= in_pass;
+        done_delay <= valid[64];
+        out_done <= done_delay;
+        pass_delay <= pass[64];
+        out_pass <= pass_delay;
     end
 
     generate for(gp = 0; gp < 64; gp = gp+1) begin
         always @(posedge clk) begin
             valid[gp+1] <= valid[gp];
             msg[gp+1] <= msg[gp];
+            pass[gp+1] <= pass[gp];
         end
     end endgenerate
 
