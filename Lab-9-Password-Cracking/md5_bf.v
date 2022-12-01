@@ -79,11 +79,10 @@ module md5_bf (
     end
 
     always @(posedge clk) begin
-        if (~reset_n || P == S_IDLE) begin
+        if (~reset_n || P == S_IDLE)
             number <= low;
-        end else if (P == S_CALC) begin
-            number <= number + 1;
-        end
+        else
+            number <= number + (P == S_CALC);
     end
 
     assign ndec = &(_ndec);

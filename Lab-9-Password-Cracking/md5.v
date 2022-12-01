@@ -91,31 +91,41 @@ module md5 (
         end
     end endgenerate
 
-    reg valid [0:64];
+    reg [64:0] valid;
     reg [31:0] pass [0:64], pass_delay;
     reg done_delay;
 
     always @(posedge clk) begin
-        valid[0] <= in_start;
-        msg[0] <= {
-            in_msg,
-            8'd128,
-            376'd0,
-            8'd64,
-            56'd0
-        };
-        pass[0] <= in_pass;
-        done_delay <= valid[64];
-        out_done <= done_delay;
-        pass_delay <= pass[64];
-        out_pass <= pass_delay;
+        if (~reset_n) begin
+            msg[0] <= 0;
+            pass[0] <= 0;
+        end else begin
+            msg[0] <= { in_msg, 8'd128, 376'd0, 8'd64, 56'd0 };
+            pass[0] <= in_pass;
+        end
+    end
+
+    always @(posedge clk) begin
+        if (~reset_n) begin
+            { out_done, done_delay, valid } <= 0;
+            pass_delay <= 0;
+            out_pass <= 0;
+        end else begin
+            { out_done, done_delay, valid } <= { done_delay, valid, in_start };
+            pass_delay <= pass[64];
+            out_pass <= pass_delay;
+        end
     end
 
     generate for(gp = 0; gp < 64; gp = gp+1) begin
         always @(posedge clk) begin
-            valid[gp+1] <= valid[gp];
-            msg[gp+1] <= msg[gp];
-            pass[gp+1] <= pass[gp];
+            if (~reset_n) begin
+                msg[gp+1] <= 0;
+                pass[gp+1] <= 0;
+            end else begin
+                msg[gp+1] <= msg[gp];
+                pass[gp+1] <= pass[gp];
+            end
         end
     end endgenerate
 
@@ -142,18 +152,13 @@ module md5 (
         t[0] <= h[0] + k[0] + w[0][0];
     end
 
-    generate for(gp = 1; gp < 64; gp = gp+1) begin
-        always @(posedge clk) begin
-            t[gp] <= d[gp-1] + k[gp] + w[gp][g[gp]];
-        end
-    end endgenerate
-
     generate for(gp = 1; gp <= 64; gp = gp+1) begin
         always @(posedge clk) begin
             a[gp] <= d[gp-1];
             b[gp] <= b[gp-1] + `ROL32(f[gp-1] + t[gp-1], r[gp-1]);
             c[gp] <= b[gp-1];
             d[gp] <= c[gp-1];
+            t[gp] <= d[gp-1] + k[gp] + w[gp][g[gp]];
         end
     end endgenerate
 

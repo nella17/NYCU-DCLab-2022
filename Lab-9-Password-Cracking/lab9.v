@@ -26,13 +26,13 @@ module lab9 (
     localparam CR = "\x0D";
     localparam LF = "\x0A";
     localparam NULL = "\x00";
-    localparam DEBUG = 1;
+    localparam DEBUG = 0;
 
     genvar gi;
 
     reg [127:0] passwd_hash = 128'hef775988943825d2871e1cfa75473ec0; // 99999999
-    localparam INSTANCE_CNT = 2;
-    localparam MAX_PASS = 33'd2576980378;
+    localparam INSTANCE_CNT = 3;
+    localparam MAX_PASS = 33'h99999999;
     localparam [31:0] SPLIT = 1 + (MAX_PASS-1) / INSTANCE_CNT;
 
     localparam [0:1] S_IDLE = 0,
@@ -40,9 +40,9 @@ module lab9 (
                      S_SHOW = 2,
                      S_UART = 3;
     reg [0:1] F = S_IDLE, F_next;
-    reg [31:0] pass;
-    reg found;
     reg [0:1] show;
+    wire [31:0] pass;
+    wire found;
 
     wire uart_done;
 
@@ -140,14 +140,8 @@ module lab9 (
     end
     assign btn_pressed = ~prev_btn & btn;
 
-    always @(posedge clk) begin
-        if (~reset_n)
-            found <= 0;
-        else if (md5_found) begin
-            found <= 1;
-            pass <= md5_pass;
-        end
-    end
+    assign pass = md5_pass;
+    assign found = md5_found;
 
     localparam MS_TICKS = 100_000;
     reg [$clog2(MS_TICKS):0] ms_tick = 0;
@@ -196,6 +190,7 @@ module lab9 (
         end
     end
 
+    /*
     // uart
     reg [5:0] idx;
     wire print_enable, print_done;
@@ -260,5 +255,6 @@ module lab9 (
                 U_next = S_UART_IDLE;
         endcase
     end
+    //*/
 
 endmodule

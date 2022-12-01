@@ -74,7 +74,7 @@ module lab9_tb ();
         @ (posedge lab9.found);
         #100;
         $display("%s", lab9.row);
-        @ (uart_done_trigger);
+        // @ (uart_done_trigger);
         $finish;
     end
 
