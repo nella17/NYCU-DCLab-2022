@@ -124,7 +124,7 @@ module lab9 (
             else
                 F_next = S_CALC;
         S_SHOW:
-            if (show == 2)
+            if (show == 3)
                 F_next = S_UART;
             else
                 F_next = S_SHOW;
@@ -169,21 +169,23 @@ module lab9 (
     always @(posedge clk) begin
         if (~reset_n)
             { row_A, row_B } <= { row_idle, row_hash };
-        else if (F == S_IDLE)
+        else if (F == S_IDLE) begin
             `N2T(i, 16, passwd_hash, 16, row_B, 0)
-        else if (F == S_CALC) begin
             show <= 0;
-            row_A <= row_sear;
-            if (ms_tick[0])
-                row_B <= row_time;
-            else
-                `N2T(i, 7, ms_cnt, 0, row_B, 3)
-        end else if (F == S_SHOW) begin
+        end else if (F == S_CALC) begin
             if (show == 0) begin
+                row_A <= row_sear;
+                row_B <= row_time;
                 show <= 1;
-                { row_A, row_B } <= { row_pass, row_time };
-            end else if (show == 1) begin
+            end else begin
+                `N2T(i, 7, ms_cnt, 0, row_B, 3)
+            end
+        end else if (F == S_SHOW) begin
+            if (show == 1) begin
                 show <= 2;
+                { row_A, row_B } <= { row_pass, row_time };
+            end else if (show == 2) begin
+                show <= 3;
                 `N2T(i, 8, pass, 0, row_A, 0)
                 `N2T(i, 7, ms_cnt, 0, row_B, 3)
             end
