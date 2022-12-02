@@ -22,7 +22,7 @@ module md5_bf (
     reg [0:1] P = S_IDLE, P_next;
 
     reg [31:0] number, in_pass;
-    wire [0:7] _ndec;
+    wire [0:7] _add;
     wire ndec;
 
     reg [8*8-1:0] md5_in;
@@ -79,14 +79,14 @@ module md5_bf (
     end
 
     wire [31:0] add = ndec +
-                    + (~_ndec[0] ? 31'h00000006 : 0)
-                    + (~_ndec[1] ? 31'h00000060 : 0)
-                    + (~_ndec[2] ? 31'h00000600 : 0)
-                    + (~_ndec[3] ? 31'h00006000 : 0)
-                    + (~_ndec[4] ? 31'h00060000 : 0)
-                    + (~_ndec[5] ? 31'h00600000 : 0)
-                    + (~_ndec[6] ? 31'h06000000 : 0)
-                    + (~_ndec[7] ? 31'h06000000 : 0);
+                    + (_add[0] ? 31'h00000006 : 0)
+                    + (_add[1] ? 31'h00000060 : 0)
+                    + (_add[2] ? 31'h00000600 : 0)
+                    + (_add[3] ? 31'h00006000 : 0)
+                    + (_add[4] ? 31'h00060000 : 0)
+                    + (_add[5] ? 31'h00600000 : 0)
+                    + (_add[6] ? 31'h06000000 : 0)
+                    + (_add[7] ? 31'h06000000 : 0);
     always @(posedge clk) begin
         if (~reset_n || P == S_IDLE)
             number <= low;
@@ -94,9 +94,9 @@ module md5_bf (
             number <= number + add;
     end
 
-    assign ndec = &(_ndec);
+    assign ndec = 1;
     generate for(gi = 0; gi < 8; gi = gi+1) begin
-        assign _ndec[gi] = (0 <= number[gi*4 +: 4] && number[gi*4 +: 4] <= 9);
+        assign _add[gi] = (gi ? _add[gi-1] : 1) && number[gi*4 +: 4] == 9;
     end endgenerate
 
     reg [3:0] i;
