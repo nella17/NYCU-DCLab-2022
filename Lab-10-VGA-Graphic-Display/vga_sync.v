@@ -67,7 +67,7 @@ module vga_sync(
             v_sync_reg <= v_sync_next;
             h_sync_reg <= h_sync_next;
          end
-	end
+    end
    // mod-2 circuit to generate 25 MHz enable tick
    assign mod2_next = ~mod2_reg;
    assign pixel_tick = mod2_reg;
@@ -85,9 +85,9 @@ module vga_sync(
          else
             h_count_next = h_count_reg + 1;
       end
-	  else
+      else
          h_count_next = h_count_reg;
-	end
+    end
    // next-state logic of mod-525 vertical sync counter
    always @(*) begin
       if (pixel_tick & h_end) begin // 25 MHz pulse
@@ -95,10 +95,10 @@ module vga_sync(
             v_count_next = 0;
          else
             v_count_next = v_count_reg + 1;
-	  end
+      end
       else
          v_count_next = v_count_reg;
-	end
+    end
    // horizontal and vertical sync, buffered to avoid glitch
    // h_sync_next asserted between 656 and 751
    assign h_sync_next = (h_count_reg>=(HD+HB) &&
