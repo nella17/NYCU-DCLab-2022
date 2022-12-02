@@ -36,11 +36,11 @@ module lab10(
 
     // Declare system variables
     reg  [31:0] fish_clock;
-    wire [9:0]  pos;
+    wire [8:0]  pos;
     wire        fish_region;
 
     // declare SRAM control signals
-    wire [16:0] sram_addr;
+    wire [17:0] sram_addr;
     wire [11:0] data_in;
     wire [11:0] data_out;
     wire        sram_we, sram_en;
@@ -53,11 +53,12 @@ module lab10(
     wire pixel_tick;      // when pixel tick is 1, we must update the RGB value
                           // based for the new coordinate (pixel_x, pixel_y)
       
-    wire [9:0] pixel_x;   // x coordinate of the next pixel (between 0 ~ 639) 
-    wire [9:0] pixel_y;   // y coordinate of the next pixel (between 0 ~ 479)
-      
+    wire [9:0] pixel_x2;   // x coordinate of the next pixel (between 0 ~ 639) 
+    wire [9:0] pixel_y2;   // y coordinate of the next pixel (between 0 ~ 479)
+    wire [8:0] pixel_x, pixel_y; // 0 ~ 319 / 0 ~ 239
+
     reg  [11:0] rgb_reg;  // RGB value for the current pixel
-    reg  [11:0] rgb_next; // RGB value for the next pixel
+    wire  [11:0] rgb_next; // RGB value for the next pixel
       
     // Application-specific VGA signals
     reg  [17:0] pixel_addr;
@@ -84,8 +85,10 @@ module lab10(
     vga_sync vs0(
         .clk(vga_clk), .reset(~reset_n), .oHS(VGA_HSYNC), .oVS(VGA_VSYNC),
         .visible(video_on), .p_tick(pixel_tick),
-        .pixel_x(pixel_x), .pixel_y(pixel_y)
+        .pixel_x(pixel_x2), .pixel_y(pixel_y2)
     );
+    assign pixel_x = pixel_x2[9:1];
+    assign pixel_y = pixel_y2[9:1];
 
     clk_divider#(2) clk_divider0(
         .clk(clk),
@@ -96,11 +99,15 @@ module lab10(
     // ------------------------------------------------------------------------
     // The following code describes an initialized SRAM memory block that
     // stores a 320x240 12-bit seabed image, plus two 64x32 fish images.
-    sram #(.DATA_WIDTH(12), .ADDR_WIDTH(18), .RAM_SIZE(VBUF_W*VBUF_H+FISH_W*FISH_H*2))
-        ram0 (.clk(clk), .we(sram_we), .en(sram_en),
-            .addr(sram_addr), .data_i(data_in), .data_o(data_out));
+    sram #(
+        .DATA_WIDTH(12), .ADDR_WIDTH(18), .RAM_SIZE(VBUF_W*VBUF_H+FISH_W*FISH_H*2),
+        .INIT_MEM("images.mem")
+    ) ram0 (
+        .clk(clk), .we(sram_we), .en(sram_en),
+        .addr(sram_addr), .data_i(data_in), .data_o(data_out)
+    );
 
-    assign sram_we = usr_btn[3]; // In this demo, we do not write the SRAM. However, if
+    assign sram_we = 0;          // In this demo, we do not write the SRAM. However, if
                                  // you set 'sram_we' to 0, Vivado fails to synthesize
                                  // ram0 as a BRAM -- this is a bug in Vivado.
     assign sram_en = 1;          // Here, we always enable the SRAM block.
@@ -117,10 +124,10 @@ module lab10(
     // fish clock is the x position of the fish on the VGA screen.
     // Note that the fish will move one screen pixel every 2^20 clock cycles,
     // or 10.49 msec
-    assign pos = fish_clock[31:20]; // the x position of the right edge of the fish image
+    assign pos = fish_clock[28:20]; // the x position of the right edge of the fish image
                                     // in the 640x480 VGA screen
     always @(posedge clk) begin
-        if (~reset_n || fish_clock[31:21] > VBUF_W + FISH_W)
+        if (~reset_n || pos > VBUF_W + FISH_W)
             fish_clock <= 0;
         else
             fish_clock <= fish_clock + 1;
@@ -134,20 +141,20 @@ module lab10(
     // on the screen, it becomes 128x64. 'pos' specifies the right edge of the
     // fish image.
     assign fish_region =
-            pixel_y >= (FISH_VPOS<<1) && pixel_y < (FISH_VPOS+FISH_H)<<1 &&
-            (pixel_x + 127) >= pos && pixel_x < pos + 1;
+            FISH_VPOS <= pixel_y && pixel_y < (FISH_VPOS+FISH_H) &&
+            pixel_x <= pos && pos < pixel_x + FISH_W;
 
     always @ (posedge clk) begin
         if (~reset_n)
             pixel_addr <= 0;
         else if (fish_region)
-            pixel_addr <= fish_addr[fish_clock[23]] +
-                          ((pixel_y>>1)-FISH_VPOS)*FISH_W +
-                          ((pixel_x +(FISH_W*2-1)-pos)>>1);
+            pixel_addr <= fish_addr[fish_clock[18]] +
+                          (pixel_y - FISH_VPOS) * FISH_W +
+                          (pixel_x + FISH_W - pos);
         else
             // Scale up a 320x240 image for the 640x480 display.
             // (pixel_x, pixel_y) ranges from (0,0) to (639, 479)
-            pixel_addr <= (pixel_y >> 1) * VBUF_W + (pixel_x >> 1);
+            pixel_addr <= pixel_y * VBUF_W + pixel_x;
     end
     // End of the AGU code.
     // ------------------------------------------------------------------------
@@ -158,12 +165,7 @@ module lab10(
         if (pixel_tick) rgb_reg <= rgb_next;
     end
 
-    always @(*) begin
-        if (~video_on)
-            rgb_next = 12'h000; // Synchronization period, must set RGB values to zero.
-        else
-            rgb_next = data_out; // RGB value at (pixel_x, pixel_y)
-    end
+    assign rgb_next = ~video_on ? 12'h0 : data_out;
     // End of the video data display code.
     // ------------------------------------------------------------------------
 
