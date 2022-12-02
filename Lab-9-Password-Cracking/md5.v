@@ -158,7 +158,8 @@ module md5 (
             b[gp] <= b[gp-1] + `ROL32(f[gp-1] + t[gp-1], r[gp-1]);
             c[gp] <= b[gp-1];
             d[gp] <= c[gp-1];
-            t[gp] <= d[gp-1] + k[gp] + w[gp][g[gp]];
+            if (gp < 64)
+                t[gp] <= d[gp-1] + k[gp] + w[gp][g[gp]];
         end
     end endgenerate
 
