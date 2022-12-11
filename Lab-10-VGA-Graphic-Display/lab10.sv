@@ -257,30 +257,19 @@ module lab10(
             sram_addr <= pixel_pos;
     end
 
-    always_ff @(posedge clk) begin
-        if (0)
-            ;
-        else if (match_prev[1])
-            ;
-        else if (match_prev[2])
-            ;
-        else
+    always_ff @(negedge clk) begin
+        if (~|(match_prev))
             pixel_bg <= data_out;
     end
 
-    always_ff @(posedge clk) begin
-        if (match[1] || match_prev[1] && data_out != pixel_bg)
-            pixel_fish[1] <= data_out;
-        else if (~fish_region[1])
-            pixel_fish[1] <= BG_PIXEL;
-    end
-
-    always_ff @(posedge clk) begin
-        if (match[2] || match_prev[2] && data_out != pixel_bg)
-            pixel_fish[2] <= data_out;
-        else if (~fish_region[2])
-            pixel_fish[2] <= BG_PIXEL;
-    end
+    generate for(gi = 1; gi <= FISH_CNT; gi = gi+1) begin
+        always_ff @(negedge clk) begin
+            if (match_prev[gi])
+                pixel_fish[gi] <= data_out;
+            else if (~fish_region[gi])
+                pixel_fish[gi] <= BG_PIXEL;
+        end
+    end endgenerate
 
     // End of the AGU code.
     // ------------------------------------------------------------------------
