@@ -229,8 +229,10 @@ module lab10(
     reg [$clog2(FISH_CNT):0] P = 0;
 
     wire [1:2] match;
-    assign match[1] = P <= 1 && fish_region[1];
-    assign match[2] = P <= 2 && fish_region[2];
+    generate for(gi = 1; gi <= FISH_CNT; gi = gi+1) begin
+        assign match[gi] = P <= gi && fish_region[gi];
+    end endgenerate
+
     reg [1:2] match_prev;
     always_ff @(posedge clk)
         match_prev <= match;
