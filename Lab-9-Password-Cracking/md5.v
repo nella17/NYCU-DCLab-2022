@@ -92,7 +92,7 @@ module md5 (
     end endgenerate
 
     reg [64:0] valid;
-    reg [31:0] pass [0:64], pass_delay;
+    reg [31:0] pass [0:64];
     reg done_delay;
 
     always @(posedge clk) begin
@@ -108,12 +108,10 @@ module md5 (
     always @(posedge clk) begin
         if (~reset_n) begin
             { out_done, done_delay, valid } <= 0;
-            pass_delay <= 0;
             out_pass <= 0;
         end else begin
             { out_done, done_delay, valid } <= { done_delay, valid, in_start };
-            pass_delay <= pass[64];
-            out_pass <= pass_delay;
+            out_pass <= pass[64];
         end
     end
 
