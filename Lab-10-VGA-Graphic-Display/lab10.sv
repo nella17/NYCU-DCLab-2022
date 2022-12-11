@@ -234,7 +234,7 @@ module lab10(
     end endgenerate
 
     reg [1:2] match_prev;
-    always_ff @(posedge clk)
+    always_ff @(negedge clk)
         match_prev <= match;
 
     always_ff @(posedge clk) begin
@@ -260,13 +260,13 @@ module lab10(
     end
 
     always_ff @(negedge clk) begin
-        if (~|(match_prev))
+        if (~|(match))
             pixel_bg <= data_out;
     end
 
     generate for(gi = 1; gi <= FISH_CNT; gi = gi+1) begin
         always_ff @(negedge clk) begin
-            if (match_prev[gi])
+            if (match[gi])
                 pixel_fish[gi] <= data_out;
             else if (~fish_region[gi])
                 pixel_fish[gi] <= BG_PIXEL;
