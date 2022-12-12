@@ -51,11 +51,8 @@ module lab10(
         { 4{ mask_cnt[1] } },
         { 4{ mask_cnt[2] } }
     };
-    always @ (posedge clk) begin
-        if (~reset_n)
-            mask_cnt <= 0;
-        else
-            mask_cnt <= mask_cnt + btn_pressed[0];
+    always_ff @ (posedge clk) begin
+        mask_cnt <= ~reset_n ? 0 : mask_cnt + btn_pressed[0];
     end
 
     // declare SRAM control signals
@@ -230,27 +227,23 @@ module lab10(
 
     wire [1:2] match;
     generate for(gi = 1; gi <= FISH_CNT; gi = gi+1) begin
-        assign match[gi] = P <= gi && fish_region[gi];
+        assign match[gi] = P <= gi-1 && fish_region[gi];
     end endgenerate
 
-    reg [1:2] match_prev;
-    always_ff @(negedge clk)
-        match_prev <= match;
-
     always_ff @(posedge clk) begin
-        if (0)
-            ;
+        if (~reset_n)
+            P <= 0;
         else if (match[1])
-            P <= 2;
-        else if (match[2])
-            P <= 3;
-        else
             P <= 1;
+        else if (match[2])
+            P <= 2;
+        else
+            P <= 0;
     end
 
     always_ff @(posedge clk) begin
-        if (0)
-            ;
+        if (~reset_n)
+            sram_addr <= 0;
         else if (match[1])
             sram_addr <= fish_pos[1];
         else if (match[2])
@@ -260,16 +253,24 @@ module lab10(
     end
 
     always_ff @(negedge clk) begin
-        if (~|(match))
+        if (~reset_n)
+            pixel_bg <= 0;
+        else if (~|(match))
             pixel_bg <= data_out;
+        else
+            pixel_bg <= BG_PIXEL;
     end
 
     generate for(gi = 1; gi <= FISH_CNT; gi = gi+1) begin
         always_ff @(negedge clk) begin
-            if (match[gi])
+            if (~reset_n)
+                pixel_fish[gi] <= BG_PIXEL;
+            else if (match[gi])
                 pixel_fish[gi] <= data_out;
             else if (~fish_region[gi])
                 pixel_fish[gi] <= BG_PIXEL;
+            else
+                pixel_fish[gi] <= pixel_fish[gi];
         end
     end endgenerate
 
@@ -279,7 +280,7 @@ module lab10(
     // ------------------------------------------------------------------------
     // Send the video data in the sram to the VGA controller
     always_ff @(posedge pixel_tick)
-        rgb_reg <= ~video_on ? 12'h0 : rgb_next;
+        rgb_reg <= (~reset_n || ~video_on) ? 12'h0 : rgb_next;
 
     assign rgb_next =
         // pixel_fish[4] == ZO_PIXEL ? pixel_fish[4] :
