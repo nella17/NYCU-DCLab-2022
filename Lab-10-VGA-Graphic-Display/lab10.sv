@@ -228,22 +228,21 @@ module lab10(
     reg [11:0] pixel_bg, pixel_fish[1:FISH_CNT];
     assign pixel_pos = pixel_ny * VBUF_W + pixel_nx;
 
-    reg [$clog2(FISH_CNT):0] P = 0, P_next = 0;
+    reg [$clog2(FISH_CNT):0] P = 0;
 
     wire [1:FISH_CNT] match;
     for(gi = 1; gi <= FISH_CNT; gi = gi+1)
         assign match[gi] = P <= gi-1 && fish_region[gi];
 
-    always_ff @(negedge clk)
-        P <= ~reset_n ? 0 : P_next;
 
-    always_comb
-        if (~reset_n) P_next = 0;
-        else if (match[1]) P_next = 1;
-        else if (match[2]) P_next = 2;
-        else if (match[3]) P_next = 3;
-        else if (match[4]) P_next = 4;
-        else P_next = 0;
+    always_ff @(posedge clk) begin
+        if (~reset_n) P <= 0;
+        else if (match[1]) P <= 1;
+        else if (match[2]) P <= 2;
+        else if (match[3]) P <= 3;
+        else if (match[4]) P <= 4;
+        else P <= 0;
+    end
 
     always_ff @(posedge clk) begin
         if (~reset_n) sram_addr <= 0;
