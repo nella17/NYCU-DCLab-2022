@@ -37,9 +37,8 @@ module lab10(
 
     wire [3:0] btn, btn_pressed;
     reg  [3:0] prev_btn;
-    generate for(gi = 0; gi < 4; gi = gi+1) begin
+    for(gi = 0; gi < 4; gi = gi+1)
         debounce db_btn(.clk(clk), .reset_n(reset_n), .in(usr_btn[gi]), .out(btn[gi]));
-    end endgenerate
     always @(posedge clk) begin
         prev_btn <= ~reset_n ? 0 : btn;
     end
@@ -51,9 +50,8 @@ module lab10(
         { 4{ mask_cnt[1] } },
         { 4{ mask_cnt[2] } }
     };
-    always_ff @ (posedge clk) begin
+    always_ff @ (posedge clk)
         mask_cnt <= ~reset_n ? 0 : mask_cnt + btn_pressed[0];
-    end
 
     // declare SRAM control signals
     reg  [16:0] sram_addr;
@@ -171,7 +169,7 @@ module lab10(
     wire        fish_region [1:FISH_CNT];
     wire [16:0] fish_pos    [1:FISH_CNT];
 
-    generate for(gi = 1; gi <= FISH_CNT; gi = gi+1) begin
+    for(gi = 1; gi <= FISH_CNT; gi = gi+1)
         fish #(
             .OFFSET(FISH_OF[gi]),
             .W(FISH_W[gi]), .H(FISH_H[gi])
@@ -181,12 +179,11 @@ module lab10(
             .frame(fish_clock[gi][fish_speed[gi]+:$clog2(FRAME_CNT)]),
             .region(fish_region[gi]), .pos(fish_pos[gi])
         );
-    end endgenerate
 
     assign fish_x[1] = fish_clock[1][20+:9];
     assign fish_y[1] = 64;
     always @(posedge clk) begin
-        if (~reset_n || fish_x[1] > VBUF_W + FISHA_W)
+        if (~reset_n || fish_x[1] >= VBUF_W + FISHA_W)
             fish_clock[1] <= 0;
         else
             fish_clock[1] <= fish_clock[1] + 1;
@@ -195,7 +192,7 @@ module lab10(
     assign fish_x[2] = fish_clock[2][19+:9];
     assign fish_y[2] = 128;
     always @(posedge clk) begin
-        if (~reset_n || fish_x[2] > VBUF_W + FISHB_W)
+        if (~reset_n || fish_x[2] >= VBUF_W + FISHB_W)
             fish_clock[2] <= 0;
         else
             fish_clock[2] <= fish_clock[2] + 1;
@@ -204,7 +201,7 @@ module lab10(
     assign fish_x[3] = fish_clock[3][20+:9];
     assign fish_y[3] = 180 + 3;
     always @(posedge clk) begin
-        if (~reset_n || fish_x[3] > VBUF_W + FISHA_W)
+        if (~reset_n || fish_x[3] >= VBUF_W + FISHA_W)
             fish_clock[3] <= 0;
         else
             fish_clock[3] <= fish_clock[3] + 1;
@@ -213,7 +210,7 @@ module lab10(
     assign fish_x[4] = fish_clock[4][20+:9];
     assign fish_y[4] = fish_clock[4][21+:9];
     always @(posedge clk) begin
-        if (~reset_n || fish_x[4] > VBUF_W + FISHB_W || fish_y[4] > VBUF_H + FISHB_H)
+        if (~reset_n || fish_x[4] >= VBUF_W + FISHB_W)
             fish_clock[4] <= 0;
         else
             fish_clock[4] <= fish_clock[4] + 1;
@@ -234,9 +231,8 @@ module lab10(
     reg [$clog2(FISH_CNT):0] P = 0;
 
     wire [1:FISH_CNT] match;
-    generate for(gi = 1; gi <= FISH_CNT; gi = gi+1) begin
+    for(gi = 1; gi <= FISH_CNT; gi = gi+1)
         assign match[gi] = P <= gi-1 && fish_region[gi];
-    end endgenerate
 
     reg [1:FISH_CNT] match_prev;
     always_ff @(posedge clk)
@@ -269,8 +265,8 @@ module lab10(
             pixel_bg <= pixel_bg;
     end
 
-    generate for(gi = 1; gi <= FISH_CNT; gi = gi+1) begin
-        always_ff @(negedge clk) begin
+    for(gi = 1; gi <= FISH_CNT; gi = gi+1)
+        always_ff @(negedge clk)
             if (~reset_n)
                 pixel_fish[gi] <= BG_PIXEL;
             else if (match_prev[gi])
@@ -279,8 +275,6 @@ module lab10(
                 pixel_fish[gi] <= BG_PIXEL;
             else
                 pixel_fish[gi] <= pixel_fish[gi];
-        end
-    end endgenerate
 
     // End of the AGU code.
     // ------------------------------------------------------------------------
