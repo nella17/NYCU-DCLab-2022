@@ -234,9 +234,6 @@ module lab10(
     for(gi = 1; gi <= FISH_CNT; gi = gi+1)
         assign match[gi] = P <= gi-1 && fish_region[gi];
 
-    reg [1:FISH_CNT] match_prev;
-    always_ff @(posedge clk)
-        match_prev <= ~reset_n ? 0 : match;
 
     always_ff @(posedge clk) begin
         if (~reset_n) P <= 0;
@@ -259,7 +256,7 @@ module lab10(
     always_ff @(negedge clk) begin
         if (~reset_n)
             pixel_bg <= 0;
-        else if (~|(match_prev))
+        else if (~|(match))
             pixel_bg <= data_out;
         else
             pixel_bg <= pixel_bg;
@@ -269,7 +266,7 @@ module lab10(
         always_ff @(negedge clk)
             if (~reset_n)
                 pixel_fish[gi] <= BG_PIXEL;
-            else if (match_prev[gi])
+            else if (match[gi])
                 pixel_fish[gi] <= data_out;
             else if (~fish_region[gi])
                 pixel_fish[gi] <= BG_PIXEL;
