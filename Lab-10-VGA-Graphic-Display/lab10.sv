@@ -159,12 +159,13 @@ module lab10(
     // fish clock is the x position of the fish on the VGA screen.
     // Note that the fish will move one screen pixel every 2^20 clock cycles,
     // or 10.49 msec
-    localparam FISH_CNT = 2;
+    localparam FISH_CNT = 4;
 
-    localparam integer FISH_OF [1:FISH_CNT] = { FISHA_OF, FISHB_OF };
-    localparam integer FISH_W  [1:FISH_CNT] = { FISHA_W , FISHB_W  };
-    localparam integer FISH_H  [1:FISH_CNT] = { FISHA_H , FISHB_H  };
+    localparam integer FISH_OF [1:FISH_CNT] = { FISHA_OF, FISHB_OF, FISHA_OF, FISHB_OF };
+    localparam integer FISH_W  [1:FISH_CNT] = { FISHA_W , FISHB_W , FISHA_W , FISHB_W  };
+    localparam integer FISH_H  [1:FISH_CNT] = { FISHA_H , FISHB_H , FISHA_H , FISHB_H  };
     reg  [31:0] fish_clock  [1:FISH_CNT];
+    reg  [4:0]  fish_speed  [1:FISH_CNT] = { 25, 25, 25, 25 };
     wire [8:0]  fish_x      [1:FISH_CNT];
     wire [8:0]  fish_y      [1:FISH_CNT];
     wire        fish_region [1:FISH_CNT];
@@ -177,12 +178,12 @@ module lab10(
         ) fish (
             .px(pixel_nx), .py(pixel_ny),
             .x(fish_x[gi]), .y(fish_y[gi]),
-            .frame(fish_clock[gi][25+:$clog2(FRAME_CNT)]),
+            .frame(fish_clock[gi][fish_speed[gi]+:$clog2(FRAME_CNT)]),
             .region(fish_region[gi]), .pos(fish_pos[gi])
         );
     end endgenerate
 
-    assign fish_x[1] = fish_clock[1][28:20];
+    assign fish_x[1] = fish_clock[1][20+:9];
     assign fish_y[1] = 64;
     always @(posedge clk) begin
         if (~reset_n || fish_x[1] > VBUF_W + FISHA_W)
@@ -191,25 +192,32 @@ module lab10(
             fish_clock[1] <= fish_clock[1] + 1;
     end
 
-    assign fish_x[2] = fish_clock[2][28:20];
+    assign fish_x[2] = fish_clock[2][19+:9];
     assign fish_y[2] = 128;
     always @(posedge clk) begin
-        if (~reset_n || fish_x[2] > VBUF_W + FISHA_W)
+        if (~reset_n || fish_x[2] > VBUF_W + FISHB_W)
             fish_clock[2] <= 0;
         else
             fish_clock[2] <= fish_clock[2] + 1;
     end
 
-    // generate for(gi = 3; gi <= FISH_CNT; gi = gi+1) begin
-    //     assign fish_x[gi] = fish_clock[gi][28:20];
-    //     assign fish_y[gi] = 64;
-    //     always @(posedge clk) begin
-    //         if (~reset_n || fish_x[gi] > VBUF_W + FISHA_W)
-    //             fish_clock[gi] <= 0;
-    //         else
-    //             fish_clock[gi] <= fish_clock[gi] + 1;
-    //     end
-    // end endgenerate
+    assign fish_x[3] = fish_clock[3][20+:9];
+    assign fish_y[3] = 180 + 3;
+    always @(posedge clk) begin
+        if (~reset_n || fish_x[3] > VBUF_W + FISHA_W)
+            fish_clock[3] <= 0;
+        else
+            fish_clock[3] <= fish_clock[3] + 1;
+    end
+
+    assign fish_x[4] = fish_clock[4][20+:9];
+    assign fish_y[4] = fish_clock[4][21+:9];
+    always @(posedge clk) begin
+        if (~reset_n || fish_x[4] > VBUF_W + FISHB_W || fish_y[4] > VBUF_H + FISHB_H)
+            fish_clock[4] <= 0;
+        else
+            fish_clock[4] <= fish_clock[4] + 1;
+    end
 
     // End of the animation clock code.
     // ------------------------------------------------------------------------
@@ -225,47 +233,47 @@ module lab10(
 
     reg [$clog2(FISH_CNT):0] P = 0;
 
-    wire [1:2] match;
+    wire [1:FISH_CNT] match;
     generate for(gi = 1; gi <= FISH_CNT; gi = gi+1) begin
         assign match[gi] = P <= gi-1 && fish_region[gi];
     end endgenerate
 
+    reg [1:FISH_CNT] match_prev;
+    always_ff @(posedge clk)
+        match_prev <= ~reset_n ? 0 : match;
+
     always_ff @(posedge clk) begin
-        if (~reset_n)
-            P <= 0;
-        else if (match[1])
-            P <= 1;
-        else if (match[2])
-            P <= 2;
-        else
-            P <= 0;
+        if (~reset_n) P <= 0;
+        else if (match[1]) P <= 1;
+        else if (match[2]) P <= 2;
+        else if (match[3]) P <= 3;
+        else if (match[4]) P <= 4;
+        else P <= 0;
     end
 
     always_ff @(posedge clk) begin
-        if (~reset_n)
-            sram_addr <= 0;
-        else if (match[1])
-            sram_addr <= fish_pos[1];
-        else if (match[2])
-            sram_addr <= fish_pos[2];
-        else
-            sram_addr <= pixel_pos;
+        if (~reset_n) sram_addr <= 0;
+        else if (match[1]) sram_addr <= fish_pos[1];
+        else if (match[2]) sram_addr <= fish_pos[2];
+        else if (match[3]) sram_addr <= fish_pos[3];
+        else if (match[4]) sram_addr <= fish_pos[4];
+        else sram_addr <= pixel_pos;
     end
 
     always_ff @(negedge clk) begin
         if (~reset_n)
             pixel_bg <= 0;
-        else if (~|(match))
+        else if (~|(match_prev))
             pixel_bg <= data_out;
         else
-            pixel_bg <= BG_PIXEL;
+            pixel_bg <= pixel_bg;
     end
 
     generate for(gi = 1; gi <= FISH_CNT; gi = gi+1) begin
         always_ff @(negedge clk) begin
             if (~reset_n)
                 pixel_fish[gi] <= BG_PIXEL;
-            else if (match[gi])
+            else if (match_prev[gi])
                 pixel_fish[gi] <= data_out;
             else if (~fish_region[gi])
                 pixel_fish[gi] <= BG_PIXEL;
@@ -283,8 +291,8 @@ module lab10(
         rgb_reg <= (~reset_n || ~video_on) ? 12'h0 : rgb_next;
 
     assign rgb_next =
-        // pixel_fish[4] == ZO_PIXEL ? pixel_fish[4] :
-        // pixel_fish[3] == ZO_PIXEL ? pixel_fish[3] :
+        pixel_fish[4] != BG_PIXEL ? pixel_fish[4] :
+        pixel_fish[3] != BG_PIXEL ? pixel_fish[3] :
         pixel_fish[2] != BG_PIXEL ? pixel_fish[2] :
         pixel_fish[1] != BG_PIXEL ? pixel_fish[1] :
                 (pixel_bg ^ bg_mask);
